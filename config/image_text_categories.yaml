@@ -1,0 +1,303 @@
+# ============================================================
+# image_text_categories.yaml
+# CTFAD Pipeline — 图文对图像内容分类体系
+#
+# 用途：驱动 S2 两轮自动分类脚本，同时作为人工审核的参考标准
+# 版本：v1.0 | 2026-02-24
+# 备注：本文件只定义图像内容类别；
+#       插花领域知识分类（形式/器型/花材/比例等）见 domain_taxonomy.yaml
+# ============================================================
+
+# ----------------------------------------------------------
+# 分类判断优先规则（Classification Priority Rules）
+# 当一张图可能属于多个类别时，按以下优先级判断：
+#
+# 规则 1 — Arrangement 优先：
+#   只要画面主体是"已完成的插花作品"（arrangement），
+#   无论背景中是否包含花器、花材、场景，
+#   一律归入 arrangement_* 类别，不归 vessel / plants / scene_photo。
+#
+# 规则 2 — 单独特写原则：
+#   vessel_* / plants_* 仅用于"单独拍摄/绘制的花器或植物素材"，
+#   即画面主体不包含完成的插花作品。
+#
+# 规则 3 — 内容类型优先于风格：
+#   判断首先看"画的是什么"（arrangement / vessel / plants / diagram...），
+#   再看"用什么媒介呈现"（photo / drawing / painting）。
+#
+# 规则 4 — diagram 的边界：
+#   只要图中含有文字标注、箭头、比例线等说明性元素，优先归 diagram_*，
+#   即使图中画有花材或花器。
+#
+# 规则 5 — other 的使用：
+#   other_* 只用于"确实无法归入上述任何类别"的情况，
+#   不能因为"不确定"就归 other，应选最接近的类别并标低置信度。
+# ----------------------------------------------------------
+
+# ============================================================
+# 顶级类别一览（供 Round 1 粗分类使用）
+# label_id 即 Round 1 输出的 coarse_label
+# ============================================================
+top_level_categories:
+  - arrangement
+  - vessel
+  - plants
+  - photograph
+  - diagram
+  - other
+
+
+# ============================================================
+# 详细类别定义（含 Round 2 细分）
+# ============================================================
+categories:
+
+  # ----------------------------------------------------------
+  # arrangement — 插花作品图（最核心类别）
+  # 定义：画面主体为已完成的插花作品，无论媒介形式
+  # Round 1 label: arrangement
+  # ----------------------------------------------------------
+  - top: arrangement
+    label_id: arrangement_photo
+    display_name: 插花作品实拍照片
+    round: 2
+    description: >
+      实拍照片，画面主体是已完成的传统中国插花作品。
+      可能包含花器、背景，但核心主体是插花作品整体。
+    examples:
+      - 盘花直立式成品照
+      - 三主枝结构完成图
+      - 展览中的插花作品
+
+  - top: arrangement
+    label_id: arrangement_drawing
+    display_name: 手绘/线描插花作品图
+    round: 2
+    description: >
+      手绘、线描或钢笔素描风格的插花作品图，
+      通常出现在教材的技法说明或临摹示范页。
+      区别于 diagram：没有标注文字、箭头或比例线。
+    examples:
+      - 教材中手绘的花型示范图
+      - 线描临摹练习图
+      - 铅笔素描花艺作品
+
+  - top: arrangement
+    label_id: arrangement_painting
+    display_name: 古画/传统绘画中的插花
+    round: 2
+    description: >
+      中国传统绘画（宋、明、清等朝代）中出现的插花场景或插花作品，
+      包括工笔画、写意画、版画等风格。
+    examples:
+      - 宋代仕女图中的瓶花
+      - 明代花卉册页中的插花
+      - 清代宫廷绘画中的花器与插花
+    future_extensions:
+      - arrangement_mural    # 壁画中的插花（石窟、寺庙等）
+      - arrangement_ceramic  # 瓷器/漆器上绘制的插花纹样
+
+
+  # ----------------------------------------------------------
+  # vessel — 花器/容器图（单独特写）
+  # 定义：画面主体是花器、花盆、花篮等容器，不含完成的插花作品
+  # Round 1 label: vessel
+  # ----------------------------------------------------------
+  - top: vessel
+    label_id: vessel_photo
+    display_name: 花器实拍照片
+    round: 2
+    description: >
+      实拍照片，主体是单独的花器（瓶、盘、缸、筒、篮、碗等），
+      不含已完成的插花作品。可以是空器或放置了少量花材但未完成的状态。
+    examples:
+      - 青瓷梅瓶单独展示图
+      - 竹编花篮特写
+      - 各类花盘、剑山配件
+
+  - top: vessel
+    label_id: vessel_painting
+    display_name: 古画/绘画中的花器
+    round: 2
+    description: >
+      传统绘画中单独出现的花器图像，主体是器皿本身而非插花作品。
+    examples:
+      - 博古图中的瓷器
+      - 工笔画中的花瓶特写
+
+  - top: vessel
+    label_id: vessel_drawing
+    display_name: 花器手绘/线稿图
+    round: 2
+    description: >
+      教材中用于说明器型、结构的花器线稿或手绘图，
+      主体是器皿本身。
+    examples:
+      - 六大器型对比线稿
+      - 花器横截面结构图（归 diagram 更合适，若含标注）
+
+
+  # ----------------------------------------------------------
+  # plants — 植物花材图（单独特写）
+  # 定义：画面主体是单独的植物、花材、枝叶、果实等素材
+  # Round 1 label: plants
+  # ----------------------------------------------------------
+  - top: plants
+    label_id: plants_photo
+    display_name: 花材/植物实拍照片
+    round: 2
+    description: >
+      实拍照片，主体是单独的花材、植物素材（花、枝、叶、果、根、藤、枯木等），
+      不含已完成的插花作品。
+    examples:
+      - 松枝素材特写
+      - 各类菊花品种对比照
+      - 花材市场或花材说明图
+
+  - top: plants
+    label_id: plants_painting
+    display_name: 传统绘画中的植物/花材
+    round: 2
+    description: >
+      传统绘画中单独出现的植物图像（非作为插花作品的一部分）。
+    examples:
+      - 花卉谱中的单株植物图
+      - 本草图谱中的植物插画
+
+  - top: plants
+    label_id: plants_drawing
+    display_name: 花材手绘/线稿图
+    round: 2
+    description: >
+      教材中用于说明花材特征、处理方法的手绘图，
+      主体是植物素材本身。
+    examples:
+      - 花枝修剪示意（若有箭头则归 step_diagram）
+      - 叶材形态手绘对比图
+
+
+  # ----------------------------------------------------------
+  # photograph — 其他实拍照片（非作品/非花器/非花材）
+  # Round 1 label: photograph
+  # ----------------------------------------------------------
+  - top: photograph
+    label_id: decoration
+    display_name: 装饰物/配饰/案几/空间陈设
+    round: 2
+    description: >
+      实拍照片，主体是插花相关的装饰配件或陈设环境，
+      如案几、香炉、屏风、山石、文人雅器等，不含花器和插花作品。
+    examples:
+      - 茶道配件特写
+      - 供桌陈设（无插花）
+      - 配石、枯山水等装饰物
+
+  - top: photograph
+    label_id: scene_photo
+    display_name: 场景/环境照片
+    round: 2
+    description: >
+      实拍照片，主体是展览空间、茶室、庭院等整体环境，
+      插花作品（若有）不是画面的绝对主体。
+    examples:
+      - 花展展厅全景
+      - 茶席整体布置（插花只是其中一部分）
+      - 室内空间陈列照
+
+  - top: photograph
+    label_id: historical_artifact
+    display_name: 历史文物/考古实物图
+    round: 2
+    description: >
+      出土或馆藏文物的实拍图，如古代花器文物、壁画局部等，
+      强调文物属性（有文物标签、博物馆背景等）而非插花作品属性。
+    examples:
+      - 汉代铜器博物馆馆藏照
+      - 出土陶制花器考古图
+
+
+  # ----------------------------------------------------------
+  # diagram — 示意图/技法图/说明图
+  # 判断依据：含有文字标注、箭头、数字、比例线等说明性元素
+  # Round 1 label: diagram
+  # ----------------------------------------------------------
+  - top: diagram
+    label_id: step_diagram
+    display_name: 操作步骤图/技法图
+    round: 2
+    description: >
+      展示插花操作步骤、技法演示的图示，
+      通常含有序号、箭头、操作说明文字。
+    examples:
+      - 剑山固定步骤 1-2-3 图解
+      - 花枝修剪角度示意
+      - 铁丝造型步骤图
+
+  - top: diagram
+    label_id: layout_diagram
+    display_name: 构图/比例/空间关系示意图
+    round: 2
+    description: >
+      展示插花构图原则、比例关系、主枝角度的示意图，
+      通常含有比例线、角度标注、黄金分割线等。
+    examples:
+      - 三主枝角度比例图（含角度数字）
+      - 洛书比例关系图
+      - 黄金分割构图示意
+
+  - top: diagram
+    label_id: structure_diagram
+    display_name: 结构/解剖示意图
+    round: 2
+    description: >
+      展示花器结构、花材解剖、固定原理等的技术性图解。
+    examples:
+      - 花器内部剑山放置截面图
+      - 花枝茎部结构说明
+
+
+  # ----------------------------------------------------------
+  # other — 无法归类
+  # 使用原则：仅在确实无法归入上述类别时使用，不因"不确定"而使用
+  # Round 1 label: other
+  # ----------------------------------------------------------
+  - top: other
+    label_id: cover_deco
+    display_name: 封面/章节装饰图
+    round: 2
+    description: >
+      书籍封面、章节扉页的装饰性图案，无实际内容信息量。
+    examples:
+      - 封面花纹底图
+      - 章节分隔装饰线图
+
+  - top: other
+    label_id: author_photo
+    display_name: 作者/人物照片
+    round: 2
+    description: >
+      作者肖像照、人物演示照（主体是人而非花）。
+    examples:
+      - 作者简介页的肖像
+      - 教师课堂示范照（以人为主体）
+
+  - top: other
+    label_id: text_only
+    display_name: 纯文字图/表格截图
+    round: 2
+    description: >
+      图片内容主要是文字、表格，无明显图像内容。
+      （理论上不应出现在图文对中，但防止误提取）
+    examples:
+      - 误提取的正文文字区域
+      - 表格截图
+
+  - top: other
+    label_id: unclassified
+    display_name: 无法归类
+    round: 2
+    description: >
+      确实无法归入任何以上类别的图像，需人工复核。
+    examples:
+      - 模糊不清的扫描件
+      - 内容无法判断的图像
