@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTFAD — 全量分类审核 v2</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; color: #1a1a1a; }
+
+/* ── 顶部 ── */
+.topbar {
+  position: sticky; top: 0; z-index: 200;
+  background: #1a1a2e; color: white;
+  padding: 0 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.topbar-main {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px;
+}
+.topbar h1 { font-size: 15px; font-weight: 600; }
+.topbar-stats { display: flex; gap: 16px; font-size: 12px; opacity: 0.85; }
+.stat-item { display: flex; flex-direction: column; align-items: center; }
+.stat-val { font-size: 16px; font-weight: 700; line-height: 1; }
+.stat-lbl { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+.progress-bar { height: 3px; background: #e94560; transition: width 0.3s; }
+
+/* ── 工具栏 ── */
+.toolbar {
+  background: white; border-bottom: 1px solid #e5e7eb;
+  padding: 10px 24px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.btn {
+  padding: 6px 14px; border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+.btn-export { background: #1a1a2e; color: white; }
+.btn-tab    { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+.btn-tab.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+.divider { width: 1px; height: 24px; background: #e5e7eb; margin: 0 4px; }
+
+/* ── 类别导航目录 ── */
+.cat-nav {
+  background: white; border-bottom: 1px solid #e5e7eb;
+  padding: 8px 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.cat-nav-label { font-size: 11px; color: #9ca3af; margin-right: 4px; }
+.cat-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11px;
+  font-weight: 600; color: white; cursor: pointer;
+  text-decoration: none; transition: opacity 0.15s;
+  border: none;
+}
+.cat-pill:hover { opacity: 0.8; }
+.cat-pill .pill-count {
+  background: rgba(255,255,255,0.3);
+  border-radius: 10px; padding: 0 5px; font-size: 10px;
+}
+
+/* ── 主内容 ── */
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+
+/* ── 大区块标题 ── */
+.zone-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 18px; border-radius: 10px; margin-bottom: 20px;
+}
+.zone-header.batch-zone   { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.zone-header.careful-zone { background: #fff7ed; border: 1px solid #fed7aa; }
+.zone-header.skip-zone    { background: #f5f3ff; border: 1px solid #ddd6fe; }
+.zone-title { font-size: 15px; font-weight: 700; }
+.zone-desc  { font-size: 12px; color: #6b7280; }
+.zone-count { margin-left: auto; font-size: 13px; font-weight: 600; }
+
+/* ── 类别子分组 ── */
+.cat-group { margin-bottom: 28px; }
+.cat-group-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; padding: 8px 12px;
+  background: white; border-radius: 8px;
+  border-left: 4px solid #e5e7eb;
+  cursor: pointer; user-select: none;
+}
+.cat-group-header:hover { background: #f9fafb; }
+.cat-group-badge {
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; color: white;
+}
+.cat-group-name  { font-size: 13px; font-weight: 600; }
+.cat-group-count { font-size: 12px; color: #9ca3af; }
+.cat-group-approved { font-size: 12px; font-weight: 600; color: #16a34a; margin-left: auto; }
+.cat-group-toggle { font-size: 12px; color: #9ca3af; margin-left: 8px; }
+
+/* 折叠状态 */
+.cat-group-body { }
+.cat-group-body.collapsed { display: none; }
+
+/* 批量操作栏（每个类别组独立） */
+.batch-bar {
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;
+  padding: 8px 14px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.batch-bar .info { font-size: 12px; color: #166534; flex: 1; }
+.btn-batch-approve {
+  background: #22c55e; color: white; border: none;
+  padding: 6px 16px; border-radius: 6px; font-size: 12px;
+  font-weight: 600; cursor: pointer;
+}
+.btn-batch-approve:hover { background: #16a34a; }
+.btn-sel-all, .btn-desel-all {
+  background: white; color: #374151; border: 1px solid #d1d5db;
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
+}
+
+/* ── 缩略图 ── */
+.thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.thumb-card {
+  position: relative; border-radius: 8px; overflow: hidden;
+  background: white; border: 2px solid #e5e7eb;
+  cursor: pointer; transition: all 0.15s; aspect-ratio: 1;
+}
+.thumb-card:hover   { border-color: #94a3b8; transform: scale(1.02); }
+.thumb-card.selected  { border-color: #22c55e; }
+.thumb-card.deselected { border-color: #f97316; opacity: 0.65; }
+.thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  padding: 4px 5px 5px;
+}
+.thumb-label { font-size: 9px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thumb-check {
+  position: absolute; top: 5px; right: 5px;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid white; background: rgba(0,0,0,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: white;
+}
+.thumb-card.selected  .thumb-check { background: #22c55e; border-color: #22c55e; }
+.thumb-card.deselected .thumb-check { background: #f97316; border-color: #f97316; }
+
+/* 展开详情 */
+.thumb-detail {
+  display: none; grid-column: 1 / -1;
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 10px; padding: 16px; margin-top: 4px;
+}
+.thumb-detail.visible { display: grid; grid-template-columns: 200px 1fr; gap: 16px; }
+.detail-img { width: 100%; border-radius: 6px; object-fit: contain; max-height: 200px; background: white; cursor: pointer; }
+.detail-info { display: flex; flex-direction: column; gap: 8px; }
+.detail-id { font-size: 11px; color: #94a3b8; font-family: monospace; }
+.detail-labels { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.label-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: white; }
+.detail-text { font-size: 11px; color: #64748b; line-height: 1.6; border-left: 2px solid #cbd5e1; padding-left: 8px; max-height: 60px; overflow: hidden; }
+.detail-actions { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; align-items: center; }
+.btn-approve { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-approve:hover, .btn-approve.active { background: #22c55e; color: white; }
+.btn-reject  { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-reject:hover, .btn-reject.active { background: #f97316; color: white; }
+.corr-select { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; background: white; cursor: pointer; min-width: 200px; }
+
+/* ── 逐条卡片 ── */
+.careful-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.careful-card {
+  background: white; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); border: 2px solid transparent; transition: border-color 0.2s;
+}
+.careful-card.approved  { border-color: #22c55e; }
+.careful-card.corrected { border-color: #f97316; }
+.careful-img { width: 100%; height: 190px; object-fit: contain; background: #fafafa; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+.card-body { padding: 11px 13px; }
+.card-meta { font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 7px; }
+.card-labels { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; flex-wrap: wrap; }
+.card-reason { font-size: 11px; color: #9ca3af; font-style: italic; margin-bottom: 7px; max-height: 30px; overflow: hidden; }
+.card-text { font-size: 11px; color: #6b7280; line-height: 1.5; border-left: 2px solid #e5e7eb; padding-left: 8px; margin-bottom: 9px; max-height: 44px; overflow: hidden; }
+.review-btns { display: flex; gap: 8px; margin-bottom: 7px; }
+.btn-card-approve { flex:1; padding:6px; background:#dcfce7; color:#16a34a; border:1px solid #bbf7d0; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.btn-card-approve:hover, .btn-card-approve.active { background:#22c55e; color:white; border-color:#22c55e; }
+.btn-card-correct { flex:1; padding:6px; background:#fff7ed; color:#ea580c; border:1px solid #fed7aa; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.btn-card-correct:hover, .btn-card-correct.active { background:#f97316; color:white; border-color:#f97316; }
+.correction-area { display:none; margin-top:6px; }
+.correction-area.visible { display:block; }
+.correction-area select { width:100%; padding:7px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:12px; background:white; cursor:pointer; }
+
+/* ── 灯箱 ── */
+.lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1000; align-items:center; justify-content:center; }
+.lightbox.active { display:flex; }
+.lightbox img { max-width:90vw; max-height:90vh; object-fit:contain; border-radius:4px; }
+.lightbox-close { position:absolute; top:20px; right:24px; color:white; font-size:28px; cursor:pointer; }
+
+.empty { text-align:center; padding:60px; color:#9ca3af; font-size:14px; }
+
+/* ── 类别颜色 ── */
+.lc-arrangement          { background:#e94560; }
+.lc-arrangement_photo    { background:#e94560; }
+.lc-arrangement_drawing  { background:#f43f5e; }
+.lc-arrangement_painting { background:#fb7185; }
+.lc-vessel               { background:#8b5cf6; }
+.lc-vessel_photo         { background:#8b5cf6; }
+.lc-vessel_drawing       { background:#a78bfa; }
+.lc-vessel_painting      { background:#c4b5fd; }
+.lc-plants               { background:#22c55e; }
+.lc-plants_photo         { background:#22c55e; }
+.lc-plants_drawing       { background:#4ade80; }
+.lc-plants_painting      { background:#86efac; }
+.lc-photograph           { background:#3b82f6; }
+.lc-decoration           { background:#3b82f6; }
+.lc-scene_photo          { background:#60a5fa; }
+.lc-historical_artifact  { background:#93c5fd; }
+.lc-diagram              { background:#f59e0b; }
+.lc-step_diagram         { background:#f59e0b; }
+.lc-layout_diagram       { background:#fbbf24; }
+.lc-structure_diagram    { background:#fcd34d; }
+.lc-other                { background:#9ca3af; }
+.lc-unclassified         { background:#6b7280; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-main">
+    <h1>🌸 CTFAD 全量分类审核 v2</h1>
+    <div class="topbar-stats">
+      <div class="stat-item"><div class="stat-val" id="statTotal">—</div><div class="stat-lbl">总计</div></div>
+      <div class="stat-item"><div class="stat-val" id="statBatch">—</div><div class="stat-lbl">批量区</div></div>
+      <div class="stat-item"><div class="stat-val" id="statCareful">—</div><div class="stat-lbl">逐条区</div></div>
+      <div class="stat-item"><div class="stat-val" id="statDone">0</div><div class="stat-lbl">已完成</div></div>
+      <div class="stat-item"><div class="stat-val" id="statPct">0%</div><div class="stat-lbl">进度</div></div>
+    </div>
+  </div>
+  <div class="progress-bar" id="progressBar" style="width:0%"></div>
+</div>
+
+<div class="toolbar">
+  <input type="file" id="fileInput" accept=".jsonl" style="font-size:13px">
+  <div class="divider"></div>
+  <button class="btn btn-tab active" id="tabAll"     onclick="switchTab('all')">全部</button>
+  <button class="btn btn-tab"        id="tabBatch"   onclick="switchTab('batch')">批量确认区</button>
+  <button class="btn btn-tab"        id="tabCareful" onclick="switchTab('careful')">逐条审核区</button>
+  <div class="divider"></div>
+  <button class="btn btn-export" onclick="exportResults()">⬇ 导出 classified_final.jsonl</button>
+</div>
+
+<!-- 类别导航（载入后动态生成） -->
+<div class="cat-nav" id="catNav" style="display:none">
+  <span class="cat-nav-label">跳转类别：</span>
+  <span id="catNavPills"></span>
+</div>
+
+<div class="container" id="mainContainer">
+  <div class="empty">请载入 <code>review_ready.jsonl</code></div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close">✕</span>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+// ── 常量 ──────────────────────────────────────────────────
+const FINE_LABELS = [
+  "arrangement_photo","arrangement_drawing","arrangement_painting",
+  "vessel_photo","vessel_drawing","vessel_painting",
+  "plants_photo","plants_drawing","plants_painting",
+  "decoration","scene_photo","historical_artifact",
+  "step_diagram","layout_diagram","structure_diagram",
+  "other","cover_deco","author_photo","text_only","unclassified"
+];
+
+const LABEL_DISPLAY = {
+  arrangement_photo:    "插花作品实拍",
+  arrangement_drawing:  "手绘/线描插花",
+  arrangement_painting: "古画插花",
+  vessel_photo:         "花器实拍",
+  vessel_drawing:       "花器线稿",
+  vessel_painting:      "古画花器",
+  plants_photo:         "花材实拍",
+  plants_drawing:       "花材手绘",
+  plants_painting:      "传统画植物",
+  decoration:           "装饰物/案几",
+  scene_photo:          "场景/环境",
+  historical_artifact:  "历史文物",
+  step_diagram:         "操作步骤图",
+  layout_diagram:       "构图/比例图",
+  structure_diagram:    "结构示意图",
+  other:                "无法归类",
+  cover_deco:           "封面装饰",
+  author_photo:         "作者照",
+  text_only:            "纯文字/表格",
+  unclassified:         "无法归类",
+};
+
+// ── 状态 ──────────────────────────────────────────────────
+let allRecords  = [];
+let reviews     = {};
+let expandedGid = null;
+let currentTab  = 'all';
+let collapsedGroups = {};  // { groupKey: true/false }
+
+// ── 文件载入 ──────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    allRecords = ev.target.result.trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+    reviews = {};
+    collapsedGroups = {};
+    // 预填沙盒标注
+    allRecords.forEach(r => {
+      if (r.review_tier === 'skip') {
+        reviews[r.global_pair_id] = { status: 'approved', human_fine_label: r.fine_label };
+      }
+    });
+    buildCatNav();
+    updateStats();
+    render();
+  };
+  reader.readAsText(file);
+});
+
+// ── 类别导航构建 ──────────────────────────────────────────
+function buildCatNav() {
+  // 统计各细分类数量（批量区 + 逐条区）
+  const dist = {};
+  allRecords.filter(r => r.review_tier !== 'skip').forEach(r => {
+    const lbl = r.fine_label || r.coarse_label;
+    dist[lbl] = (dist[lbl] || 0) + 1;
+  });
+
+  const pills = Object.entries(dist)
+    .sort((a,b) => b[1]-a[1])
+    .map(([lbl, cnt]) => `
+      <button class="cat-pill lc-${lbl}" onclick="jumpToGroup('${lbl}')">
+        ${LABEL_DISPLAY[lbl] || lbl}
+        <span class="pill-count">${cnt}</span>
+      </button>`).join('');
+
+  document.getElementById('catNavPills').innerHTML = pills;
+  document.getElementById('catNav').style.display = 'flex';
+}
+
+function jumpToGroup(label) {
+  // 确保该类别所在的分组是展开的
+  collapsedGroups[label] = false;
+  render();
+  setTimeout(() => {
+    const el = document.getElementById(`group-${label}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+// ── 统计 ──────────────────────────────────────────────────
+function updateStats() {
+  const batch   = allRecords.filter(r => r.review_tier === 'batch').length;
+  const careful = allRecords.filter(r => r.review_tier === 'careful').length;
+  const skip    = allRecords.filter(r => r.review_tier === 'skip').length;
+  const total   = allRecords.length;
+  const needReview = batch + careful;
+  const done = Object.values(reviews).filter(r => r.status !== 'pending').length - skip;
+  const pct  = needReview > 0 ? Math.round(Math.max(0, done) / needReview * 100) : 0;
+
+  document.getElementById('statTotal').textContent   = total;
+  document.getElementById('statBatch').textContent   = batch;
+  document.getElementById('statCareful').textContent = careful;
+  document.getElementById('statDone').textContent    = Math.max(0, done);
+  document.getElementById('statPct').textContent     = pct + '%';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+// ── Tab 切换 ──────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  ['all','batch','careful'].forEach(t => {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1))
+      .classList.toggle('active', t === tab);
+  });
+  render();
+}
+
+// ── 渲染主体 ──────────────────────────────────────────────
+function render() {
+  const container = document.getElementById('mainContainer');
+  if (!allRecords.length) {
+    container.innerHTML = '<div class="empty">请载入 <code>review_ready.jsonl</code></div>';
+    return;
+  }
+
+  let html = '';
+
+  if (currentTab !== 'careful') {
+    html += renderZoneBatch(allRecords.filter(r => r.review_tier === 'batch'));
+  }
+  if (currentTab !== 'batch') {
+    html += renderZoneCareful(allRecords.filter(r => r.review_tier === 'careful'));
+  }
+  if (currentTab === 'all') {
+    html += renderZoneSkip(allRecords.filter(r => r.review_tier === 'skip'));
+  }
+
+  container.innerHTML = html;
+}
+
+// ── 按类别分组工具函数 ────────────────────────────────────
+function groupByLabel(records) {
+  const groups = {};
+  records.forEach(r => {
+    const lbl = r.fine_label || r.coarse_label;
+    if (!groups[lbl]) groups[lbl] = [];
+    groups[lbl].push(r);
+  });
+  // 按数量降序排列
+  return Object.entries(groups).sort((a,b) => b[1].length - a[1].length);
+}
+
+// ── 批量确认区 ────────────────────────────────────────────
+function renderZoneBatch(records) {
+  const groups = groupByLabel(records);
+  const totalApproved = records.filter(r => reviews[r.global_pair_id]?.status === 'approved').length;
+
+  let groupsHtml = groups.map(([lbl, recs]) => renderBatchGroup(lbl, recs)).join('');
+
+  return `
+<div style="margin-bottom:32px">
+  <div class="zone-header batch-zone">
+    <div>
+      <div class="zone-title">🔲 批量确认区</div>
+      <div class="zone-desc">arrangement / diagram / plants — 沙盒准确率 80%+，按类别分组，扫描后一键确认</div>
+    </div>
+    <div class="zone-count">已确认 ${totalApproved} / ${records.length}</div>
+  </div>
+  ${groupsHtml}
+</div>`;
+}
+
+function renderBatchGroup(lbl, records) {
+  const approved  = records.filter(r => reviews[r.global_pair_id]?.status === 'approved').length;
+  const corrected = records.filter(r => reviews[r.global_pair_id]?.status === 'corrected').length;
+  const isCollapsed = collapsedGroups[lbl] === true;
+  const display = LABEL_DISPLAY[lbl] || lbl;
+
+  const thumbsHtml = records.map(r => renderThumb(r, lbl)).join('');
+
+  return `
+<div class="cat-group" id="group-${lbl}">
+  <div class="cat-group-header" onclick="toggleGroup('${lbl}')">
+    <span class="cat-group-badge lc-${lbl}">${lbl}</span>
+    <span class="cat-group-name">${display}</span>
+    <span class="cat-group-count">${records.length} 条</span>
+    <span class="cat-group-approved">✅ ${approved} 已确认${corrected > 0 ? ` · ✏️ ${corrected} 纠错` : ''}</span>
+    <span class="cat-group-toggle">${isCollapsed ? '▶ 展开' : '▼ 收起'}</span>
+  </div>
+  <div class="cat-group-body ${isCollapsed ? 'collapsed' : ''}" id="group-body-${lbl}">
+    <div class="batch-bar">
+      <div class="info">「${display}」— ${records.length} 条，已确认 ${approved}</div>
+      <button class="btn-sel-all"   onclick="event.stopPropagation();groupSelectAll('${lbl}')">全选</button>
+      <button class="btn-desel-all" onclick="event.stopPropagation();groupDeselectAll('${lbl}')">取消全选</button>
+      <button class="btn-batch-approve" onclick="event.stopPropagation();groupApprove('${lbl}')">✅ 批准此类别全部</button>
+    </div>
+    <div class="thumb-grid" id="thumbgrid-${lbl}">
+      ${thumbsHtml}
+    </div>
+  </div>
+</div>`;
+}
+
+function renderThumb(r, lbl) {
+  const gid    = r.global_pair_id;
+  const rev    = reviews[gid];
+  const label  = r.fine_label || r.coarse_label;
+  const imgSrc = `file://${r.image_path}`;
+  const isExp  = expandedGid === gid;
+
+  const stateClass  = rev ? (rev.status === 'approved' ? 'selected' : 'deselected') : '';
+  const checkSymbol = rev ? (rev.status === 'approved' ? '✓' : '✕') : '';
+
+  return `
+<div class="thumb-card ${stateClass}" id="thumb-${gid}" onclick="toggleThumb('${gid}','${lbl}')">
+  <img class="thumb-img" src="${imgSrc}" onerror="this.style.background='#f3f4f6'" alt="${gid}">
+  <div class="thumb-overlay"><div class="thumb-label">${label}</div></div>
+  <div class="thumb-check">${checkSymbol}</div>
+</div>
+${isExp ? renderThumbDetail(r) : `<div id="detail-${gid}"></div>`}`;
+}
+
+function renderThumbDetail(r) {
+  const gid  = r.global_pair_id;
+  const rev  = reviews[gid];
+  const label = r.fine_label || r.coarse_label;
+  const imgSrc = `file://${r.image_path}`;
+  const text = [r.caption, r.context].filter(Boolean).join(' | ').substring(0, 200);
+  const approveActive = rev?.status === 'approved' ? 'active' : '';
+  const rejectActive  = rev?.status === 'corrected' ? 'active' : '';
+  const corrVisible   = rev?.status === 'corrected' ? '' : 'style="display:none"';
+  const selectedVal   = rev?.human_fine_label || '';
+  const opts = FINE_LABELS.map(l =>
+    `<option value="${l}" ${selectedVal===l?'selected':''}>${l} — ${LABEL_DISPLAY[l]||''}</option>`).join('');
+
+  return `
+<div class="thumb-detail visible" id="detail-${gid}" style="grid-column:1/-1">
+  <img class="detail-img" src="${imgSrc}" onclick="openLightbox('${imgSrc}')"
+       onerror="this.style.background='#f3f4f6'" alt="">
+  <div class="detail-info">
+    <div class="detail-id">${gid} · ${r.book_id} · p${r.page ?? '?'}</div>
+    <div class="detail-labels">
+      <span class="label-badge lc-${label}">${label}</span>
+      <span style="font-size:11px;color:#9ca3af">粗分类: ${r.coarse_label}</span>
+    </div>
+    ${text ? `<div class="detail-text">${text}</div>` : ''}
+    <div class="detail-actions">
+      <button class="btn-approve ${approveActive}" onclick="thumbApprove('${gid}')">✅ 正确</button>
+      <button class="btn-reject  ${rejectActive}"  onclick="thumbReject('${gid}')">❌ 纠错</button>
+      <select class="corr-select" id="corr-${gid}" ${corrVisible}
+              onchange="thumbSetCorr('${gid}',this.value)">
+        <option value="">— 选正确细分类 —</option>${opts}
+      </select>
+    </div>
+  </div>
+</div>`;
+}
+
+// ── 逐条审核区 ────────────────────────────────────────────
+function renderZoneCareful(records) {
+  const groups = groupByLabel(records);
+  let groupsHtml = groups.map(([lbl, recs]) => renderCarefulGroup(lbl, recs)).join('');
+
+  return `
+<div style="margin-bottom:32px">
+  <div class="zone-header careful-zone">
+    <div>
+      <div class="zone-title">🔍 逐条审核区</div>
+      <div class="zone-desc">vessel / photograph / other — 准确率较低，按类别分组逐条判断</div>
+    </div>
+    <div class="zone-count">${records.length} 条</div>
+  </div>
+  ${groupsHtml}
+</div>`;
+}
+
+function renderCarefulGroup(lbl, records) {
+  const approved  = records.filter(r => reviews[r.global_pair_id]?.status === 'approved').length;
+  const corrected = records.filter(r => reviews[r.global_pair_id]?.status === 'corrected').length;
+  const isCollapsed = collapsedGroups['c_' + lbl] === true;
+  const display = LABEL_DISPLAY[lbl] || lbl;
+
+  const cardsHtml = records.map(r => renderCarefulCard(r)).join('');
+
+  return `
+<div class="cat-group" id="group-${lbl}">
+  <div class="cat-group-header" onclick="toggleGroup('c_${lbl}')">
+    <span class="cat-group-badge lc-${lbl}">${lbl}</span>
+    <span class="cat-group-name">${display}</span>
+    <span class="cat-group-count">${records.length} 条</span>
+    <span class="cat-group-approved">✅ ${approved} 已确认${corrected > 0 ? ` · ✏️ ${corrected} 纠错` : ''}</span>
+    <span class="cat-group-toggle">${isCollapsed ? '▶ 展开' : '▼ 收起'}</span>
+  </div>
+  <div class="cat-group-body ${isCollapsed ? 'collapsed' : ''}" id="group-body-c_${lbl}">
+    <div class="careful-grid">${cardsHtml}</div>
+  </div>
+</div>`;
+}
+
+function renderCarefulCard(r) {
+  const gid    = r.global_pair_id;
+  const rev    = reviews[gid];
+  const label  = r.fine_label || r.coarse_label;
+  const imgSrc = `file://${r.image_path}`;
+  const text   = [r.caption, r.context].filter(Boolean).join(' | ').substring(0,160);
+  const stateClass    = rev ? rev.status : '';
+  const approveActive = rev?.status === 'approved'  ? 'active' : '';
+  const correctActive = rev?.status === 'corrected' ? 'active' : '';
+  const corrVisible   = rev?.status === 'corrected' ? 'visible' : '';
+  const selectedVal   = rev?.human_fine_label || '';
+  const opts = FINE_LABELS.map(l =>
+    `<option value="${l}" ${selectedVal===l?'selected':''}>${l} — ${LABEL_DISPLAY[l]||''}</option>`).join('');
+
+  return `
+<div class="careful-card ${stateClass}" id="card-${gid}">
+  <img class="careful-img" src="${imgSrc}"
+       onclick="openLightbox('${imgSrc}')"
+       onerror="this.style.background='#f3f4f6';this.style.height='100px'" alt="">
+  <div class="card-body">
+    <div class="card-meta">${gid} · ${r.book_id} · p${r.page ?? '?'}</div>
+    <div class="card-labels">
+      <span class="label-badge lc-${label}">${label}</span>
+      <span style="font-size:11px;color:#9ca3af">粗: ${r.coarse_label}</span>
+    </div>
+    ${r.fine_reason ? `<div class="card-reason">${r.fine_reason.substring(0,100)}</div>` : ''}
+    ${text ? `<div class="card-text">${text}</div>` : ''}
+    <div class="review-btns">
+      <button class="btn-card-approve ${approveActive}" onclick="carefulApprove('${gid}')">✅ 正确</button>
+      <button class="btn-card-correct ${correctActive}" onclick="carefulCorrect('${gid}')">❌ 纠错</button>
+    </div>
+    <div class="correction-area ${corrVisible}" id="ccorr-${gid}">
+      <select onchange="carefulSetCorr('${gid}',this.value)">
+        <option value="">— 选正确细分类 —</option>${opts}
+      </select>
+    </div>
+  </div>
+</div>`;
+}
+
+// ── 沙盒跳过区 ───────────────────────────────────────────
+function renderZoneSkip(records) {
+  if (!records.length) return '';
+  return `
+<div style="margin-bottom:24px">
+  <div class="zone-header skip-zone">
+    <div>
+      <div class="zone-title">⏭ 沙盒已标注（自动跳过）</div>
+      <div class="zone-desc">人工标注结果直接复用，无需审核</div>
+    </div>
+    <div class="zone-count">${records.length} 条</div>
+  </div>
+  <div style="color:#9ca3af;font-size:12px;padding:12px 16px;background:white;border-radius:8px;line-height:2">
+    ${records.map(r=>`<code style="margin-right:6px">${r.global_pair_id}</code>`).join('')}
+  </div>
+</div>`;
+}
+
+// ── 折叠/展开 ────────────────────────────────────────────
+function toggleGroup(key) {
+  collapsedGroups[key] = !collapsedGroups[key];
+  render();
+}
+
+// ── 批量操作 ─────────────────────────────────────────────
+function groupSelectAll(lbl) {
+  allRecords.filter(r => (r.fine_label||r.coarse_label) === lbl && r.review_tier === 'batch')
+    .forEach(r => {
+      if (reviews[r.global_pair_id]?.status !== 'corrected') {
+        reviews[r.global_pair_id] = { status: 'approved', human_fine_label: r.fine_label };
+      }
+    });
+  render(); updateStats();
+}
+function groupDeselectAll(lbl) {
+  allRecords.filter(r => (r.fine_label||r.coarse_label) === lbl && r.review_tier === 'batch')
+    .forEach(r => { delete reviews[r.global_pair_id]; });
+  render(); updateStats();
+}
+function groupApprove(lbl) {
+  const recs = allRecords.filter(r =>
+    (r.fine_label||r.coarse_label) === lbl &&
+    r.review_tier === 'batch' &&
+    reviews[r.global_pair_id]?.status === 'approved'
+  );
+  recs.forEach(r => {
+    reviews[r.global_pair_id] = { status: 'approved', human_fine_label: r.fine_label };
+  });
+  // 批准后自动折叠这个组
+  collapsedGroups[lbl] = true;
+  render(); updateStats();
+}
+
+// ── 缩略图交互 ───────────────────────────────────────────
+function toggleThumb(gid, lbl) {
+  if (!reviews[gid]) {
+    reviews[gid] = { status: 'approved', human_fine_label: null };
+  }
+  expandedGid = (expandedGid === gid) ? null : gid;
+  render(); updateStats();
+}
+function thumbApprove(gid) {
+  const r = allRecords.find(x => x.global_pair_id === gid);
+  reviews[gid] = { status: 'approved', human_fine_label: r?.fine_label };
+  render(); updateStats();
+}
+function thumbReject(gid) {
+  reviews[gid] = { status: 'corrected', human_fine_label: '' };
+  render(); updateStats();
+}
+function thumbSetCorr(gid, val) {
+  if (!reviews[gid]) reviews[gid] = { status: 'corrected', human_fine_label: '' };
+  reviews[gid].human_fine_label = val;
+  updateStats();
+}
+
+// ── 逐条审核 ─────────────────────────────────────────────
+function carefulApprove(gid) {
+  const r = allRecords.find(x => x.global_pair_id === gid);
+  reviews[gid] = { status: 'approved', human_fine_label: r?.fine_label };
+  refreshCarefulCard(gid); updateStats();
+}
+function carefulCorrect(gid) {
+  reviews[gid] = { status: 'corrected', human_fine_label: '' };
+  refreshCarefulCard(gid); updateStats();
+}
+function carefulSetCorr(gid, val) {
+  if (!reviews[gid]) reviews[gid] = { status: 'corrected', human_fine_label: '' };
+  reviews[gid].human_fine_label = val;
+  updateStats();
+}
+function refreshCarefulCard(gid) {
+  const r = allRecords.find(x => x.global_pair_id === gid);
+  if (!r) return;
+  const el = document.getElementById(`card-${gid}`);
+  if (el) el.outerHTML = renderCarefulCard(r);
+}
+
+// ── 灯箱 ─────────────────────────────────────────────────
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+// ── 导出 ─────────────────────────────────────────────────
+function exportResults() {
+  if (!allRecords.length) { alert('请先载入文件'); return; }
+  const pending = allRecords.filter(r =>
+    r.review_tier !== 'skip' && !reviews[r.global_pair_id]
+  ).length;
+  if (pending > 0 && !confirm(`还有 ${pending} 条未审核，确定导出吗？`)) return;
+
+  const output = allRecords.map(r => {
+    const gid = r.global_pair_id;
+    const rev = reviews[gid];
+    const finalLabel = rev?.human_fine_label || r.fine_label;
+    return {
+      global_pair_id:       gid,
+      book_id:              r.book_id,
+      image_path:           r.image_path,
+      image_filename:       r.image_filename,
+      page:                 r.page,
+      caption:              r.caption,
+      coarse_label:         r.coarse_label,
+      fine_label:           finalLabel,
+      label_source:         r.label_source,
+      review_tier:          r.review_tier,
+      review_status:        rev?.status || 'pending',
+      is_corrected:         rev?.status === 'corrected',
+      original_fine_label:  r.fine_label,
+    };
+  });
+
+  const blob = new Blob([output.map(r => JSON.stringify(r)).join('\n')], { type: 'application/jsonl' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'classified_final.jsonl';
+  a.click();
+}
+</script>
+</body>
+</html>

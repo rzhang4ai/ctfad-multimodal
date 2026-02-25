@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTFAD — 沙盒分类审核</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f0f2f5;
+    color: #1a1a1a;
+  }
+
+  /* ── 顶部导航 ── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #1a1a2e;
+    color: white;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .topbar h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+  .topbar .stats { font-size: 13px; opacity: 0.8; }
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 3px;
+    background: #e94560;
+    transition: width 0.3s ease;
+  }
+
+  /* ── 工具栏 ── */
+  .toolbar {
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .toolbar label { font-size: 13px; color: #666; }
+  .toolbar input[type=file] { font-size: 13px; }
+  .btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  .btn-primary { background: #e94560; color: white; }
+  .btn-secondary { background: #f0f2f5; color: #333; }
+  .btn-export { background: #16213e; color: white; }
+
+  /* ── 主内容区 ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+
+  /* ── 卡片网格 ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── 单张卡片 ── */
+  .card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    border: 2px solid transparent;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card.reviewed-correct { border-color: #22c55e; }
+  .card.reviewed-wrong   { border-color: #f97316; }
+
+  .card-img {
+    width: 100%;
+    height: 220px;
+    object-fit: contain;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+  }
+  .card-img:hover { opacity: 0.9; }
+
+  .card-body { padding: 12px 14px; }
+
+  .card-id {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 6px;
+    font-family: monospace;
+  }
+
+  /* 预测标签 */
+  .prediction-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .label-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+  }
+  .confidence {
+    font-size: 12px;
+    color: #888;
+  }
+  .reason-text {
+    font-size: 11px;
+    color: #aaa;
+    font-style: italic;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    max-height: 36px;
+    overflow: hidden;
+  }
+
+  /* 文本信息 */
+  .text-info {
+    font-size: 11px;
+    color: #777;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    max-height: 48px;
+    overflow: hidden;
+    border-left: 2px solid #eee;
+    padding-left: 8px;
+  }
+
+  /* 审核按钮区 */
+  .review-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .btn-correct {
+    flex: 1;
+    padding: 7px;
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-correct:hover, .btn-correct.active {
+    background: #22c55e;
+    color: white;
+    border-color: #22c55e;
+  }
+  .btn-wrong {
+    flex: 1;
+    padding: 7px;
+    background: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-wrong:hover, .btn-wrong.active {
+    background: #f97316;
+    color: white;
+    border-color: #f97316;
+  }
+
+  /* 纠错下拉 */
+  .correction-area {
+    margin-top: 8px;
+    display: none;
+  }
+  .correction-area.visible { display: block; }
+  .correction-area select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: white;
+    color: #333;
+    cursor: pointer;
+  }
+  .correction-area select:focus {
+    outline: none;
+    border-color: #e94560;
+  }
+
+  /* 审核状态角标 */
+  .status-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  .status-pending  { background: #f3f4f6; color: #9ca3af; }
+  .status-correct  { background: #dcfce7; color: #16a34a; }
+  .status-corrected { background: #fff7ed; color: #ea580c; }
+
+  /* ── 图片灯箱 ── */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox.active { display: flex; }
+  .lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  /* ── 空状态 ── */
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #999;
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 15px; line-height: 1.8; }
+
+  /* ── 类别颜色 ── */
+  .label-arrangement   { background: #e94560; }
+  .label-vessel        { background: #8b5cf6; }
+  .label-plants        { background: #22c55e; }
+  .label-photograph    { background: #3b82f6; }
+  .label-diagram       { background: #f59e0b; }
+  .label-other         { background: #9ca3af; }
+  .label-unknown       { background: #6b7280; }
+</style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="topbar">
+  <h1>🌸 CTFAD 沙盒分类审核</h1>
+  <div class="stats" id="stats">请载入预测结果文件</div>
+  <div class="progress-bar" id="progressBar" style="width:0%"></div>
+</div>
+
+<!-- 工具栏 -->
+<div class="toolbar">
+  <label>载入预测文件：</label>
+  <input type="file" id="fileInput" accept=".jsonl">
+  <button class="btn btn-secondary" onclick="filterAll()">全部</button>
+  <button class="btn btn-secondary" onclick="filterPending()">待审核</button>
+  <button class="btn btn-secondary" onclick="filterCorrect()">✅ 已确认正确</button>
+  <button class="btn btn-secondary" onclick="filterCorrected()">✏️ 已纠错</button>
+  <button class="btn btn-export" onclick="exportResults()">⬇ 导出审核结果</button>
+</div>
+
+<!-- 主内容 -->
+<div class="container">
+  <div id="grid" class="grid">
+    <div class="empty-state">
+      <div class="icon">📂</div>
+      <p>请点击上方「载入预测文件」<br>选择 <code>sandbox_predictions.jsonl</code></p>
+    </div>
+  </div>
+</div>
+
+<!-- 图片灯箱 -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+// ── 数据与状态 ──────────────────────────────────────────────
+let records = [];      // 原始预测记录
+let reviews = {};      // 审核结果 { global_pair_id: { status, corrected_label } }
+let currentFilter = 'all';
+
+const CATEGORIES = [
+  { value: "arrangement",  label: "arrangement — 插花作品图" },
+  { value: "vessel",       label: "vessel — 花器图（单独特写）" },
+  { value: "plants",       label: "plants — 花材/植物图（单独特写）" },
+  { value: "photograph",   label: "photograph — 其他实拍照片" },
+  { value: "diagram",      label: "diagram — 示意图/技法图" },
+  { value: "other",        label: "other — 无法归类" },
+];
+
+// Round 2 细分类选项（按 top 分组）
+const FINE_CATEGORIES = [
+  { value: "arrangement_photo",    label: "arrangement_photo — 插花作品实拍" },
+  { value: "arrangement_drawing",  label: "arrangement_drawing — 手绘/线描插花" },
+  { value: "arrangement_painting", label: "arrangement_painting — 古画插花" },
+  { value: "vessel_photo",         label: "vessel_photo — 花器实拍" },
+  { value: "vessel_painting",      label: "vessel_painting — 古画花器" },
+  { value: "vessel_drawing",       label: "vessel_drawing — 花器线稿" },
+  { value: "plants_photo",         label: "plants_photo — 花材实拍" },
+  { value: "plants_painting",      label: "plants_painting — 传统画植物" },
+  { value: "plants_drawing",       label: "plants_drawing — 花材手绘" },
+  { value: "decoration",           label: "decoration — 装饰物/配饰/案几" },
+  { value: "scene_photo",          label: "scene_photo — 场景/环境照" },
+  { value: "historical_artifact",  label: "historical_artifact — 历史文物" },
+  { value: "step_diagram",         label: "step_diagram — 操作步骤图" },
+  { value: "layout_diagram",       label: "layout_diagram — 构图/比例示意图" },
+  { value: "structure_diagram",    label: "structure_diagram — 结构示意图" },
+  { value: "cover_deco",           label: "cover_deco — 封面装饰" },
+  { value: "author_photo",         label: "author_photo — 作者照" },
+  { value: "text_only",            label: "text_only — 纯文字/表格" },
+  { value: "unclassified",         label: "unclassified — 无法归类" },
+];
+
+// ── 文件载入 ──────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const lines = ev.target.result.trim().split('\n');
+    records = lines.map(l => JSON.parse(l));
+    reviews = {};
+    renderGrid(records);
+    updateStats();
+  };
+  reader.readAsText(file);
+});
+
+// ── 渲染 ──────────────────────────────────────────────────
+function renderGrid(items) {
+  const grid = document.getElementById('grid');
+  if (items.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>没有符合筛选条件的记录</p></div>';
+    return;
+  }
+  grid.innerHTML = items.map(r => renderCard(r)).join('');
+}
+
+function renderCard(r) {
+  const gid = r.global_pair_id;
+  const pred = r.prediction || {};
+  const label = pred.label || 'unknown';
+  const conf = pred.confidence != null ? (pred.confidence * 100).toFixed(0) + '%' : '?';
+  const reason = pred.reason || '';
+  const caption = r.caption || '';
+  const context = r.context || '';
+  const textSnippet = [caption, context].filter(Boolean).join(' | ').substring(0, 120);
+
+  const review = reviews[gid];
+  const statusClass = review
+    ? (review.status === 'correct' ? 'reviewed-correct' : 'reviewed-wrong')
+    : '';
+  const statusBadge = review
+    ? (review.status === 'correct'
+        ? '<span class="status-badge status-correct">✅ 正确</span>'
+        : `<span class="status-badge status-corrected">✏️ ${review.corrected_label}</span>`)
+    : '<span class="status-badge status-pending">待审核</span>';
+
+  const correctActive = review && review.status === 'correct' ? 'active' : '';
+  const wrongActive = review && review.status === 'corrected' ? 'active' : '';
+  const correctionVisible = review && review.status === 'corrected' ? 'visible' : '';
+  const selectedVal = review ? review.corrected_label : '';
+
+  const fineOptions = FINE_CATEGORIES.map(c =>
+    `<option value="${c.value}" ${selectedVal === c.value ? 'selected' : ''}>${c.label}</option>`
+  ).join('');
+
+  // 图片：用 file:// 协议直接读本地绝对路径
+  const imgSrc = `file://${r.image_path}`;
+
+  return `
+<div class="card ${statusClass}" id="card-${gid}">
+  <img class="card-img"
+       src="${imgSrc}"
+       alt="${gid}"
+       loading="lazy"
+       onerror="this.style.background='#f3f4f6';this.alt='图片无法加载（需本地运行）'"
+       onclick="openLightbox('${imgSrc}')">
+  <div class="card-body">
+    <div class="card-id">${gid} · ${r.book_id} ${statusBadge}</div>
+
+    <div class="prediction-row">
+      <span class="label-badge label-${label}">${label}</span>
+      <span class="confidence">置信度 ${conf}</span>
+    </div>
+    <div class="reason-text">${reason}</div>
+
+    ${textSnippet ? `<div class="text-info">${textSnippet}</div>` : ''}
+
+    <div class="review-row">
+      <button class="btn-correct ${correctActive}"
+              onclick="markCorrect('${gid}')">✅ 正确</button>
+      <button class="btn-wrong ${wrongActive}"
+              onclick="markWrong('${gid}')">❌ 错误，应该是→</button>
+    </div>
+    <div class="correction-area ${correctionVisible}" id="correction-${gid}">
+      <select onchange="setCorrection('${gid}', this.value)">
+        <option value="">— 选择正确类别 —</option>
+        ${fineOptions}
+      </select>
+    </div>
+  </div>
+</div>`;
+}
+
+// ── 审核操作 ──────────────────────────────────────────────
+function markCorrect(gid) {
+  reviews[gid] = { status: 'correct', corrected_label: null };
+  refreshCard(gid);
+  updateStats();
+}
+
+function markWrong(gid) {
+  if (!reviews[gid] || reviews[gid].status !== 'corrected') {
+    reviews[gid] = { status: 'corrected', corrected_label: '' };
+  }
+  refreshCard(gid);
+  updateStats();
+}
+
+function setCorrection(gid, value) {
+  if (!reviews[gid]) reviews[gid] = { status: 'corrected', corrected_label: '' };
+  reviews[gid].corrected_label = value;
+  refreshCard(gid);
+  updateStats();
+}
+
+function refreshCard(gid) {
+  const record = records.find(r => r.global_pair_id === gid);
+  if (!record) return;
+  const cardEl = document.getElementById(`card-${gid}`);
+  if (cardEl) {
+    cardEl.outerHTML = renderCard(record);
+  }
+}
+
+// ── 统计更新 ──────────────────────────────────────────────
+function updateStats() {
+  const total = records.length;
+  const done = Object.keys(reviews).length;
+  const correct = Object.values(reviews).filter(r => r.status === 'correct').length;
+  const corrected = Object.values(reviews).filter(r => r.status === 'corrected').length;
+  const accuracy = done > 0 ? ((correct / done) * 100).toFixed(1) : '-';
+
+  document.getElementById('stats').textContent =
+    `共 ${total} 张 · 已审 ${done} · 正确 ${correct} · 纠错 ${corrected} · 准确率 ${accuracy}%`;
+
+  const pct = total > 0 ? (done / total * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+// ── 筛选 ──────────────────────────────────────────────────
+function filterAll() {
+  renderGrid(records);
+}
+function filterPending() {
+  renderGrid(records.filter(r => !reviews[r.global_pair_id]));
+}
+function filterCorrect() {
+  renderGrid(records.filter(r => reviews[r.global_pair_id]?.status === 'correct'));
+}
+function filterCorrected() {
+  renderGrid(records.filter(r => reviews[r.global_pair_id]?.status === 'corrected'));
+}
+
+// ── 灯箱 ──────────────────────────────────────────────────
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+// ── 导出 ──────────────────────────────────────────────────
+function exportResults() {
+  if (records.length === 0) {
+    alert('请先载入预测文件');
+    return;
+  }
+  const results = records.map(r => {
+    const review = reviews[r.global_pair_id];
+    return {
+      global_pair_id: r.global_pair_id,
+      book_id: r.book_id,
+      image_path: r.image_path,
+      image_filename: r.image_filename,
+      caption: r.caption,
+      predicted_label: r.prediction?.label,
+      predicted_confidence: r.prediction?.confidence,
+      predicted_reason: r.prediction?.reason,
+      review_status: review ? review.status : 'pending',
+      human_label: review
+        ? (review.status === 'correct'
+            ? r.prediction?.label   // 正确时用预测值
+            : review.corrected_label)  // 纠错时用人工选择的值
+        : null,
+      is_correct: review ? review.status === 'correct' : null,
+    };
+  });
+
+  const jsonl = results.map(r => JSON.stringify(r, null, 0)).join('\n');
+  const blob = new Blob([jsonl], { type: 'application/jsonl' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sandbox_reviewed.jsonl';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

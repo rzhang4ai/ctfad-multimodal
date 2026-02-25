@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CTFAD — 补充标注</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f0f2f5; }
+
+.topbar {
+  background: #1a1a2e; color: white; padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.topbar h1 { font-size: 15px; font-weight: 600; }
+.topbar-right { display: flex; align-items: center; gap: 16px; font-size: 13px; }
+.progress { opacity: 0.8; }
+.btn-export {
+  background: #e94560; color: white; border: none;
+  padding: 7px 18px; border-radius: 6px; font-size: 13px;
+  font-weight: 600; cursor: pointer;
+}
+.btn-export:hover { background: #c73652; }
+.btn-export:disabled { background: #6b7280; cursor: not-allowed; }
+
+.toolbar {
+  background: white; border-bottom: 1px solid #e5e7eb;
+  padding: 10px 24px; display: flex; gap: 10px; align-items: center;
+}
+.toolbar input { font-size: 13px; }
+.note {
+  font-size: 12px; color: #6b7280; padding: 3px 10px;
+  background: #fef9c3; border-radius: 6px; border: 1px solid #fde68a;
+}
+
+.container { max-width: 960px; margin: 24px auto; padding: 0 24px; }
+
+/* 分组标题 */
+.group-title {
+  font-size: 13px; font-weight: 700; color: #374151;
+  padding: 8px 12px; background: white; border-radius: 8px;
+  border-left: 4px solid #e94560; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.group-badge {
+  font-size: 11px; background: #fee2e2; color: #991b1b;
+  padding: 2px 8px; border-radius: 10px; font-weight: 600;
+}
+.group-badge.ok { background: #dcfce7; color: #166534; }
+
+/* 卡片 */
+.card {
+  background: white; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  border: 2px solid #e5e7eb; margin-bottom: 12px;
+  display: grid; grid-template-columns: 200px 1fr;
+  transition: border-color 0.2s;
+}
+.card.done   { border-color: #22c55e; }
+.card.urgent { border-color: #f97316; }
+
+.card-img {
+  width: 200px; height: 160px; object-fit: contain;
+  background: #fafafa; cursor: pointer;
+  border-right: 1px solid #f0f0f0;
+}
+.card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+.card-meta { font-size: 11px; color: #94a3b8; font-family: monospace; }
+
+.label-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.label-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; color: white;
+}
+.orig-label {
+  font-size: 11px; color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.caption-text {
+  font-size: 11px; color: #6b7280; line-height: 1.5;
+  border-left: 2px solid #e5e7eb; padding-left: 8px;
+  max-height: 44px; overflow: hidden;
+}
+
+.select-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+.select-row label { font-size: 12px; font-weight: 600; color: #374151; white-space: nowrap; }
+.fine-select {
+  flex: 1; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+  font-size: 12px; background: white; cursor: pointer; min-width: 200px;
+}
+.fine-select:focus { outline: none; border-color: #e94560; }
+.fine-select.selected { border-color: #22c55e; background: #f0fdf4; }
+
+.status-tag {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+.status-pending  { background: #fef3c7; color: #92400e; }
+.status-done     { background: #dcfce7; color: #166534; }
+
+/* 灯箱 */
+.lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:1000; align-items:center; justify-content:center; }
+.lightbox.active { display:flex; }
+.lightbox img { max-width:90vw; max-height:90vh; object-fit:contain; border-radius:4px; }
+.lightbox-close { position:absolute; top:20px; right:24px; color:white; font-size:28px; cursor:pointer; }
+
+.empty { text-align:center; padding:60px; color:#9ca3af; font-size:14px; }
+
+/* 颜色 */
+.lc-arrangement_photo    { background:#e94560; }
+.lc-arrangement_drawing  { background:#f43f5e; }
+.lc-arrangement_painting { background:#fb7185; }
+.lc-arrangement          { background:#fda4af; }
+.lc-step_diagram         { background:#f59e0b; }
+.lc-layout_diagram       { background:#fbbf24; }
+.lc-structure_diagram    { background:#fcd34d; }
+.lc-unclassified         { background:#9ca3af; }
+.lc-other                { background:#6b7280; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🌸 CTFAD 补充标注</h1>
+  <div class="topbar-right">
+    <span class="progress" id="progressText">请载入文件</span>
+    <button class="btn-export" id="btnExport" onclick="exportFile()" disabled>⬇ 导出修复后的文件</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input type="file" id="fileInput" accept=".jsonl">
+  <span class="note">💡 载入 classified_final.jsonl，本界面只显示需要补充标注的条目</span>
+</div>
+
+<div class="container" id="container">
+  <div class="empty">请载入 <code>classified_final.jsonl</code></div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close">✕</span>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<script>
+const FINE_OPTIONS = [
+  { value: "", label: "— 选择正确的细分类 —" },
+  { label: "── 插花作品 ──", disabled: true },
+  { value: "arrangement_photo",    label: "arrangement_photo — 实拍照片" },
+  { value: "arrangement_drawing",  label: "arrangement_drawing — 手绘/速写" },
+  { value: "arrangement_painting", label: "arrangement_painting — 古画/传统绘画" },
+  { label: "── 花器 ──", disabled: true },
+  { value: "vessel_photo",    label: "vessel_photo — 实拍" },
+  { value: "vessel_drawing",  label: "vessel_drawing — 线稿" },
+  { value: "vessel_painting", label: "vessel_painting — 传统绘画" },
+  { label: "── 花材 ──", disabled: true },
+  { value: "plants_photo",    label: "plants_photo — 实拍" },
+  { value: "plants_drawing",  label: "plants_drawing — 手绘" },
+  { value: "plants_painting", label: "plants_painting — 传统绘画" },
+  { label: "── 其他照片 ──", disabled: true },
+  { value: "decoration",          label: "decoration — 装饰物/案几" },
+  { value: "scene_photo",         label: "scene_photo — 场景/环境" },
+  { value: "historical_artifact", label: "historical_artifact — 历史文物" },
+  { label: "── 示意图 ──", disabled: true },
+  { value: "step_diagram",      label: "step_diagram — 操作步骤图" },
+  { value: "layout_diagram",    label: "layout_diagram — 构图/比例图" },
+  { value: "structure_diagram", label: "structure_diagram — 结构示意图" },
+  { label: "── 其他 ──", disabled: true },
+  { value: "other",         label: "other — 无法归类" },
+  { value: "unclassified",  label: "unclassified — 真的无法归类（保留）" },
+];
+
+// ── 状态 ──
+let allRecords  = [];   // 全部 432 条
+let fixTargets  = [];   // 需要补标注的条目
+let labelMap    = {};   // { gid: new_fine_label }
+
+// ── 判断需要补标注的条目 ──
+function needsRelabel(r) {
+  // 情况1：纠错时未选类别（is_corrected=true 且 fine_label=unclassified 且 orig 不是 unclassified）
+  if (r.is_corrected && r.fine_label === 'unclassified' && r.original_fine_label !== 'unclassified') {
+    return { reason: 'bug', label: '纠错未选类别' };
+  }
+  // 情况2：fine_label = "arrangement"（Round 2 未细分）
+  if (r.fine_label === 'arrangement') {
+    return { reason: 'unsplit', label: '未细分' };
+  }
+  return null;
+}
+
+// ── 载入文件 ──
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    allRecords = ev.target.result.trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+    labelMap   = {};
+
+    fixTargets = allRecords
+      .map(r => ({ ...r, _reason: needsRelabel(r) }))
+      .filter(r => r._reason !== null);
+
+    // 预填：纠错未选类别的条目，预填 original_fine_label 作为参考
+    fixTargets.forEach(r => {
+      if (r._reason.reason === 'bug') {
+        labelMap[r.global_pair_id] = r.original_fine_label;  // 预填原始预测，供参考
+      }
+    });
+
+    document.getElementById('btnExport').disabled = false;
+    updateProgress();
+    render();
+  };
+  reader.readAsText(file);
+});
+
+// ── 渲染 ──
+function render() {
+  const container = document.getElementById('container');
+  if (!fixTargets.length) {
+    container.innerHTML = '<div class="empty">✅ 没有需要补标注的条目</div>';
+    return;
+  }
+
+  const bugItems      = fixTargets.filter(r => r._reason.reason === 'bug');
+  const unsplitItems  = fixTargets.filter(r => r._reason.reason === 'unsplit');
+
+  let html = '';
+
+  if (bugItems.length) {
+    const doneCount = bugItems.filter(r => labelMap[r.global_pair_id] && labelMap[r.global_pair_id] !== r.original_fine_label || labelMap[r.global_pair_id] === r.original_fine_label).length;
+    html += `
+<div class="group-title" style="border-left-color:#f97316">
+  <span>⚠️ 纠错时未选类别（审核界面 bug）</span>
+  <span class="group-badge">${bugItems.length} 条</span>
+  <span style="font-size:11px;color:#6b7280;margin-left:auto">预填了模型原始预测，请确认或修改</span>
+</div>`;
+    bugItems.forEach(r => { html += renderCard(r, 'urgent'); });
+  }
+
+  if (unsplitItems.length) {
+    const doneCount = unsplitItems.filter(r => labelMap[r.global_pair_id]).length;
+    html += `
+<div class="group-title" style="margin-top:24px">
+  <span>📋 未细分的 arrangement 条目</span>
+  <span class="group-badge">${unsplitItems.length} 条</span>
+  <span class="group-badge ok" style="margin-left:auto">${doneCount} / ${unsplitItems.length} 已标注</span>
+</div>`;
+    unsplitItems.forEach(r => { html += renderCard(r, ''); });
+  }
+
+  container.innerHTML = html;
+}
+
+function renderCard(r, urgentClass) {
+  const gid       = r.global_pair_id;
+  const imgSrc    = `file://${r.image_path}`;
+  const current   = labelMap[gid] || '';
+  const isDone    = !!current;
+  const cardClass = isDone ? 'done' : (urgentClass || '');
+
+  const caption = [r.caption, r.context].filter(Boolean).join(' | ').substring(0, 150);
+
+  const opts = FINE_OPTIONS.map(o => {
+    if (o.disabled) return `<option disabled>${o.label}</option>`;
+    return `<option value="${o.value}" ${current === o.value ? 'selected' : ''}>${o.label}</option>`;
+  }).join('');
+
+  const statusTag = isDone
+    ? `<span class="status-tag status-done">✅ 已标注：${current}</span>`
+    : `<span class="status-tag status-pending">待标注</span>`;
+
+  // 提示信息
+  let hint = '';
+  if (r._reason.reason === 'bug') {
+    hint = `<span style="font-size:11px;color:#ea580c">原始预测：${r.original_fine_label}（已预填，请确认）</span>`;
+  } else {
+    hint = `<span style="font-size:11px;color:#6b7280">粗分类正确，请选择细分类</span>`;
+  }
+
+  return `
+<div class="card ${cardClass}" id="card-${gid}">
+  <img class="card-img" src="${imgSrc}"
+       onclick="openLightbox('${imgSrc}')"
+       onerror="this.style.background='#f3f4f6'" alt="${gid}">
+  <div class="card-body">
+    <div class="card-meta">${gid} · ${r.book_id} · p${r.page ?? '?'} ${statusTag}</div>
+    <div class="label-row">
+      <span class="label-badge lc-${r.fine_label}">${r.fine_label}</span>
+      ${r.original_fine_label && r.original_fine_label !== r.fine_label
+        ? `<span class="orig-label">原: ${r.original_fine_label}</span>` : ''}
+      ${hint}
+    </div>
+    ${caption ? `<div class="caption-text">${caption}</div>` : ''}
+    <div class="select-row">
+      <label>细分类：</label>
+      <select class="fine-select ${current ? 'selected' : ''}"
+              id="sel-${gid}"
+              onchange="setLabel('${gid}', this.value)">
+        ${opts}
+      </select>
+    </div>
+  </div>
+</div>`;
+}
+
+// ── 标注操作 ──
+function setLabel(gid, value) {
+  labelMap[gid] = value;
+  const sel = document.getElementById(`sel-${gid}`);
+  if (sel) sel.classList.toggle('selected', !!value);
+  const card = document.getElementById(`card-${gid}`);
+  if (card) {
+    card.className = `card ${value ? 'done' : ''}`;
+  }
+  // 更新状态标签
+  const statusEl = card?.querySelector('.status-tag');
+  if (statusEl) {
+    statusEl.className = `status-tag ${value ? 'status-done' : 'status-pending'}`;
+    statusEl.textContent = value ? `✅ 已标注：${value}` : '待标注';
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const done  = fixTargets.filter(r => !!labelMap[r.global_pair_id]).length;
+  const total = fixTargets.length;
+  document.getElementById('progressText').textContent =
+    `需补标注 ${total} 条，已完成 ${done} 条`;
+}
+
+// ── 导出（修复后写回全量数据）──
+function exportFile() {
+  if (!allRecords.length) return;
+
+  const pending = fixTargets.filter(r => !labelMap[r.global_pair_id]).length;
+  if (pending > 0 && !confirm(`还有 ${pending} 条未标注，确定导出吗？`)) return;
+
+  const output = allRecords.map(r => {
+    const gid      = r.global_pair_id;
+    const newLabel = labelMap[gid];
+
+    if (!newLabel) return r;  // 不需要修改的条目原样输出
+
+    return {
+      ...r,
+      fine_label:       newLabel,
+      original_fine_label: r.original_fine_label || r.fine_label,
+      is_corrected:     newLabel !== r.original_fine_label,
+      review_status:    "corrected",
+      relabeled:        true,   // 标记这条经过补标注
+    };
+  });
+
+  const blob = new Blob(
+    [output.map(r => JSON.stringify(r)).join('\n')],
+    { type: 'application/jsonl' }
+  );
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'classified_final_fixed.jsonl';
+  a.click();
+}
+
+// ── 灯箱 ──
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+</script>
+</body>
+</html>
