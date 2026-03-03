@@ -408,10 +408,26 @@
       .card { break-inside: avoid; }
     }
 
-    /* ───────────────────── Environment Section ───────────────────── */
+    /* ───────────────────── Environment Section (toggle, collapsed by default) ───────────────────── */
     .env-section {
       margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
     }
+    .env-section details {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: #fafbfc;
+    }
+    .env-section summary {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted);
+      padding: 10px 14px; cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .env-section summary::-webkit-details-marker { display: none; }
+    .env-section summary::before {
+      content: '▶'; font-size: 10px; color: var(--text-muted); transition: transform .2s;
+    }
+    .env-section details[open] summary::before { transform: rotate(90deg); }
+    .env-section .env-details-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); }
     .env-title {
       font-size: 12px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .06em; color: var(--text-muted); margin-bottom: 10px;
@@ -742,17 +758,21 @@ function renderEnvironment(env) {
   };
   return `
   <div class="env-section">
-    <div class="env-title">⚙️ 工具链 / 运行环境 — ${env.summary}</div>
-    <div class="env-tools">
-      ${(env.tools||[]).map(t => `
-        <div class="env-chip">
-          <span class="env-chip-type ${typeColors[t.type]||'type-tool'}">${t.type}</span>
-          <div class="env-chip-text">
-            <span class="env-chip-name">${t.name}</span>
-            <span class="env-chip-desc">${t.desc}</span>
-          </div>
-        </div>`).join('')}
-    </div>
+    <details>
+      <summary>⚙️ 工具链 / 运行环境 — ${env.summary}</summary>
+      <div class="env-details-body">
+        <div class="env-tools">
+          ${(env.tools||[]).map(t => `
+            <div class="env-chip">
+              <span class="env-chip-type ${typeColors[t.type]||'type-tool'}">${t.type}</span>
+              <div class="env-chip-text">
+                <span class="env-chip-name">${t.name}</span>
+                <span class="env-chip-desc">${t.desc}</span>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </details>
   </div>`;
 }
 
