@@ -22,6 +22,18 @@
 # PDF 原始扫描件
 *.pdf
 
+# 3D 模型文件
+*.glb
+*.gltf
+*.obj
+*.mtl
+*.stl
+*.ply
+*.fbx
+*.usdz
+*.blend
+*.blend1
+
 # 数据目录（如果意外在项目目录下创建了 data/ 之类的）
 data/
 datasets/
@@ -81,3 +93,10 @@ build/
 logs/
 tmp/
 temp/
+
+# ----------------------------------------------------------
+# Dashboard（项目细节暂不公开，等准备好分享时再解除）
+# ----------------------------------------------------------
+# index.html 可入库（GitHub Pages 用），但数据和说明暂时私有
+dashboard/data.json
+dashboard/README.md

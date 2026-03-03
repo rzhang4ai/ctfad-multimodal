@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CTFAD S3 图像质量报告</title>
+<style>
+  body { background:#0e0f0d; color:#d4d2c8; font-family:'SF Mono','Monaco',monospace; font-size:13px; margin:0; padding:0 }
+  .header { background:#161714; border-bottom:1px solid #2a2b27; padding:20px 32px; }
+  .title { font-size:18px; color:#8fba5c; font-family:'Hiragino Serif','STSong',serif; margin-bottom:4px }
+  .subtitle { font-size:11px; color:#6b6a62; letter-spacing:0.08em }
+  .summary { background:#1c1d1a; border:1px solid #2a2b27; border-radius:4px; padding:14px 18px; margin:24px 32px 16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; padding:0 32px 32px }
+  ::-webkit-scrollbar { width:5px } ::-webkit-scrollbar-track { background:transparent } ::-webkit-scrollbar-thumb { background:#2a2b27; border-radius:2px }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">CTFAD · S3 测试图像质量报告</div>
+  <div class="subtitle">生成时间：2026-02-26 11:25 · 总计 8 张 · 有效 8 张</div>
+</div>
+
+<div class="summary">
+  <div style="font-size:11px;color:#6b6a62;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">质量分布摘要</div>
+  <div style="font-size:13px"><span style="color:#8fba5c">A级: 3张</span> · <span style="color:#a8d070">A-级: 2张</span> · <span style="color:#d4a853">B级: 3张</span></div>
+  <div style="margin-top:10px;font-size:11px;color:#6b6a62">
+    💡 <strong style="color:#d4d2c8">背景复杂度</strong>是去背景成功率的关键指标。
+    A 级 + 背景简单 的图片是 3D 生成实验的最优输入。
+  </div>
+</div>
+
+
+
+<div class="grid">
+  
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #8fba5c">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">ZHHY-ZR2.JPG</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">个人学习照 · 1280×1920px · 202.0KB · 2.46MP</div>
+              </div>
+              <div style="background:#8fba5c22;color:#8fba5c;border:1px solid #8fba5c;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                A 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="color:#8fba5c;font-size:11px">✅ 无问题</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">460</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:66%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">24</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:10%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">166</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:65%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">33</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:33%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">16 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:16%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">1.5</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:10%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.667 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #8fba5c">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">cfaf_作品賞析_11240_250313_005黃美端.jpg</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">CFAF官网 · 4000×6000px · 7393.3KB · 24.0MP</div>
+              </div>
+              <div style="background:#8fba5c22;color:#8fba5c;border:1px solid #8fba5c;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                A 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="color:#8fba5c;font-size:11px">✅ 无问题</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">317</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:45%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">28</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:11%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">67</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:26%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">40</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:40%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">6 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:6%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">2.7</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:18%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.667 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #8fba5c">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">cfaf_作品賞析_10251_250614_021蘇婉玲_作品_名片_特約教室_0935-895892.jpg</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">CFAF官网 · 4000×6000px · 5527.5KB · 24.0MP</div>
+              </div>
+              <div style="background:#8fba5c22;color:#8fba5c;border:1px solid #8fba5c;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                A 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="color:#8fba5c;font-size:11px">✅ 无问题</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">277</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:40%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">36</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:14%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">100</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:39%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">37</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:37%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">12 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:12%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">1.8</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:12%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.667 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #a8d070">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">img_p0009_005.jpg</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">书籍扫描 · 465×775px · 130.7KB · 0.36MP</div>
+              </div>
+              <div style="background:#a8d07022;color:#a8d070;border:1px solid #a8d070;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                A- 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">分辨率过低（465×775，短边<512px）</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">377</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:54%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">47</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:19%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">205</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:80%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">68</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:68%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">16 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:16%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">3.4</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:23%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.6 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #a8d070">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">img_p0061_104.jpg</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">书籍扫描 · 258×608px · 26.1KB · 0.16MP</div>
+              </div>
+              <div style="background:#a8d07022;color:#a8d070;border:1px solid #a8d070;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                A- 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">分辨率过低（258×608，短边<512px）</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">252</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:36%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">27</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:11%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">227</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:89%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">71</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:71%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">0 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:0%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">1.9</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:13%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.424 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #d4a853">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">img_p0064_114.jpg</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">书籍扫描 · 479×971px · 46.1KB · 0.47MP</div>
+              </div>
+              <div style="background:#d4a85322;color:#d4a853;border:1px solid #d4a853;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                B 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">过曝（brightness=242.1）</span><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">分辨率过低（479×971，短边<512px）</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">116</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:17%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">16</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:6%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">242</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#d4a853;width:95%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">50</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:50%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">7 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:7%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">0.9</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:6%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.493 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #d4a853">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">ZHHY-ZR1.JPG</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">个人学习照 · 4992×3328px · 3012.6KB · 16.61MP</div>
+              </div>
+              <div style="background:#d4a85322;color:#d4a853;border:1px solid #d4a853;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                B 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">模糊（blur=56.2）</span><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">低对比度（contrast=25.2）</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">56</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#c4534a;width:8%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">26</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:10%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">171</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:67%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">25</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#d4a853;width:25%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">19 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:19%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">1.1</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:8%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 1.5 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background:#1c1d1a;border:1px solid #2a2b27;border-radius:4px;overflow:hidden;border-top:3px solid #d4a853">
+          <div style="padding:12px 14px;border-bottom:1px solid #2a2b27">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+              <div>
+                <div style="font-size:12px;color:#d4d2c8;word-break:break-all">img_p0027_027.jpg</div>
+                <div style="font-size:10px;color:#6b6a62;margin-top:2px">书籍扫描 · 1654×2404px · 731.6KB · 3.98MP</div>
+              </div>
+              <div style="background:#d4a85322;color:#d4a853;border:1px solid #d4a853;padding:3px 10px;border-radius:2px;font-size:13px;font-weight:bold;white-space:nowrap;margin-left:12px">
+                B 级
+              </div>
+            </div>
+            <div style="margin-top:6px"><span style="background:#c4534a22;color:#c4534a;border:1px solid #c4534a44;padding:2px 7px;border-radius:2px;font-size:10px;margin:2px 2px 0 0;display:inline-block">模糊（blur=14.4）</span></div>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>模糊度</span><span style="color:#d4d2c8">14</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#c4534a;width:2%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>色彩饱和度</span><span style="color:#d4d2c8">15</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:6%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>亮度</span><span style="color:#d4d2c8">223</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:87%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>对比度</span><span style="color:#d4d2c8">63</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:63%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>背景复杂度</span><span style="color:#8fba5c">5 简单✅</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:5%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6a62"><span>噪点</span><span style="color:#d4d2c8">0.8</span></div>
+                <div style="background:#2a2b27;border-radius:2px;height:6px;width:100%;margin-top:4px"><div style="background:#8fba5c;width:5%;height:100%;border-radius:2px"></div></div>
+              </div>
+
+            </div>
+
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid #2a2b27;font-size:10px;color:#6b6a62">
+              尺寸比例 0.688 ·
+              <span style="color:#8fba5c">背景简单，去背景友好</span> ·
+              <span style="color:#8fba5c">彩色</span>
+            </div>
+          </div>
+        </div>
+        
+</div>
+</body>
+</html>
