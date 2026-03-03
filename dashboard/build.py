@@ -52,7 +52,8 @@ def main():
         r'// ═+\n//  Embedded fallback data.*?// ═+\n'
         r'function getEmbeddedData\(\) \{.*?// __EMBEDDED_DATA_END__\s*\n\}'
     )
-    new_html, n = re.subn(pattern, new_func, html, flags=re.DOTALL)
+    # Use a lambda so re.sub doesn't process \n in new_func as literal newlines
+    new_html, n = re.subn(pattern, lambda m: new_func, html, flags=re.DOTALL)
 
     if n == 0:
         print("❌ Could not find getEmbeddedData() marker in index.html")
