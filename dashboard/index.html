@@ -256,6 +256,16 @@
 
     /* ───────────────────── Notes ───────────────────── */
     .notes-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .notes-details { margin-top: 0; }
+    .notes-details summary {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted);
+      cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 0; user-select: none;
+    }
+    .notes-details summary::-webkit-details-marker { display: none; }
+    .notes-details summary::before { content: '▶'; font-size: 10px; margin-right: 6px; transition: transform .2s; }
+    .notes-details[open] summary::before { transform: rotate(90deg); }
     .notes-title {
       font-size: 12px; font-weight: 600; text-transform: uppercase;
       letter-spacing: .06em; color: var(--text-muted); margin-bottom: 10px;
@@ -600,6 +610,17 @@
     }
     @media (max-width: 800px) { .pilot-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 500px) { .pilot-grid { grid-template-columns: 1fr; } }
+    .pilot-three-slots {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+      margin-top: 8px;
+    }
+    @media (max-width: 600px) { .pilot-three-slots { grid-template-columns: 1fr; } }
+    .editable-inline {
+      min-height: 1.2em; display: inline-block;
+    }
+    .editable-inline[contenteditable="true"] {
+      outline: 1px dashed var(--border); border-radius: 4px; padding: 2px 6px;
+    }
     .pilot-frame {
       border: 1px solid var(--border); border-radius: var(--radius);
       overflow: hidden; background: white;
@@ -648,6 +669,14 @@
       border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;
     }
     .admin-active .pilot-save-btn { display: block; }
+    .toast-msg {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+      background: #1e293b; color: #fff; padding: 12px 24px; border-radius: 10px;
+      font-size: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.25); z-index: 99999;
+      opacity: 0; transition: opacity 0.25s; pointer-events: none;
+      min-width: 180px; text-align: center;
+    }
+    .toast-msg.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -705,6 +734,9 @@
   <a id="footer-github" href="#" target="_blank" style="color:var(--purple)">GitHub 仓库</a> · 
  如需添加备注请联系研究者获取管理权限
 </footer>
+
+<!-- ═══════ Toast ═══════ -->
+<div class="toast-msg" id="toast-msg" aria-live="polite"></div>
 
 <!-- ═══════ Admin FAB ═══════ -->
 <div class="admin-fab" id="admin-fab" onclick="toggleAdminMode()">
@@ -765,6 +797,84 @@ let isAdmin = false;
 let pendingNoteTarget = null; // { stageId, phaseId | null }
 const LS_KEY = 'ctfad_dashboard_v1';
 
+function escapeHtml(s) {
+  if (s == null) return '';
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+function getNested(obj, path) {
+  const parts = path.split('.');
+  let cur = obj;
+  for (const p of parts) {
+    if (cur == null) return undefined;
+    const num = parseInt(p, 10);
+    cur = !isNaN(num) ? cur[num] : cur[p];
+  }
+  return cur;
+}
+function setNested(obj, path, value) {
+  const parts = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const p = parts[i];
+    const num = parseInt(p, 10);
+    const key = !isNaN(num) ? num : p;
+    const next = parts[i + 1];
+    const nextNum = parseInt(next, 10);
+    if (cur[key] == null) cur[key] = !isNaN(nextNum) ? [] : {};
+    cur = cur[key];
+  }
+  const last = parts[parts.length - 1];
+  cur[!isNaN(parseInt(last, 10)) ? parseInt(last, 10) : last] = value;
+}
+function editableInline(path, value) {
+  if (value == null) value = '';
+  if (!isAdmin) return escapeHtml(value);
+  return `<span class="editable-inline" contenteditable="true" data-edit-path="${escapeHtml(path)}" spellcheck="false">${escapeHtml(value)}</span>`;
+}
+function showToast(msg, duration) {
+  let el = document.getElementById('toast-msg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast-msg';
+    el.className = 'toast-msg';
+    el.setAttribute('aria-live', 'polite');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(function() { el.classList.remove('show'); }, duration != null ? duration : 2800);
+}
+document.addEventListener('blur', function(e) {
+  const el = e.target;
+  const path = el.getAttribute && el.getAttribute('data-edit-path');
+  if (path && el.classList && el.classList.contains('editable-inline')) {
+    const val = el.textContent.trim();
+    setNested(DATA, path, val);
+    persistToLocal();
+  }
+}, true);
+document.addEventListener('change', function(e) {
+  const el = e.target;
+  const path = el.getAttribute && el.getAttribute('data-edit-path');
+  if (path && el.classList && el.classList.contains('editable-field')) {
+    setNested(DATA, path, el.value);
+    persistToLocal();
+    if (path.indexOf('samplePairs') >= 0 && path.indexOf('imageUrl') >= 0) {
+      const m = path.match(/stages\.(\d+)\./);
+      if (m) {
+        const stage = DATA.stages[parseInt(m[1], 10)];
+        if (stage) {
+          const sec = document.getElementById('section-' + stage.id);
+          if (sec) sec.replaceWith(renderSimpleStage(stage));
+        }
+      }
+    }
+  }
+}, true);
+
 // ═══════════════════════════════════════════════════════
 //  Helper: Environment Section
 // ═══════════════════════════════════════════════════════
@@ -797,40 +907,66 @@ function renderEnvironment(env) {
 // ═══════════════════════════════════════════════════════
 //  Helper: Sample Pairs (S1)
 // ═══════════════════════════════════════════════════════
-function renderSamplePairs(pairs) {
+function renderSamplePairs(pairs, stageId) {
   if (!pairs || pairs.length === 0) return '';
+  const si = DATA && DATA.stages ? DATA.stages.findIndex(s => s.id === stageId) : -1;
   return `
   <div class="sample-pairs-section">
     <div class="sample-pairs-title">📋 数据示例 — 图文对结构</div>
     <div class="sample-pairs-grid">
-      ${pairs.map(p => `
+      ${pairs.map((p, i) => {
+        const imgBlock = p.imageUrl
+          ? `<img src="${(p.imageUrl||'').replace(/"/g,'&quot;')}" alt="${escapeHtml(p.imageDesc)}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">`
+          : `<span class="sp-img-icon">${p.source==='book'?'📚':'🌐'}</span><span>${escapeHtml(p.imageDesc)}</span>`;
+        const uploadBlock = isAdmin && si >= 0 ? `
+            <input type="url" class="pilot-edit-field editable-field" placeholder="图片 URL" value="${(p.imageUrl&&!p.imageUrl.startsWith('data:')) ? escapeHtml(p.imageUrl) : ''}" data-edit-path="stages.${si}.samplePairs.${i}.imageUrl" style="margin-top:6px;width:100%;font-size:11px">
+            <input type="file" accept="image/*" style="margin-top:4px;font-size:11px" data-stage-id="${stageId}" data-pair-index="${i}" onchange="uploadSamplePairImage(this)">
+          ` : '';
+        return `
         <div class="sample-pair-card">
           <div class="sp-header">
-            <span class="sp-source-badge ${p.source==='book'?'sp-book':'sp-web'}">${p.sourceLabel}</span>
-            <span class="sp-pair-id">${p.pairId}</span>
+            <span class="sp-source-badge ${p.source==='book'?'sp-book':'sp-web'}">${escapeHtml(p.sourceLabel)}</span>
+            <span class="sp-pair-id">${escapeHtml(p.pairId)}</span>
           </div>
           <div class="sp-body">
             <div class="sp-image-placeholder">
-              ${p.imageUrl
-                ? `<img src="${p.imageUrl}" alt="${p.imageDesc}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">`
-                : `<span class="sp-img-icon">${p.source==='book'?'📚':'🌐'}</span>
-                   <span>${p.imageDesc}</span>`}
+              ${imgBlock}
             </div>
-            <div class="sp-class-badge">🏷️ ${p.classLabel}</div>
+            ${uploadBlock}
+            <div class="sp-class-badge">🏷️ ${escapeHtml(p.classLabel)}</div>
             <div class="sp-field">
               <div class="sp-field-label">Caption / 图注</div>
-              <div class="sp-field-value">${p.caption}</div>
+              <div class="sp-field-value">${escapeHtml(p.caption)}</div>
             </div>
             <div class="sp-field">
               <div class="sp-field-label">Context / 关联文本</div>
-              <div class="sp-context">${p.context.replace(/\n/g,'<br>')}</div>
+              <div class="sp-context">${(p.context||'').replace(/\n/g,'<br>')}</div>
             </div>
-            ${p.sourceUrl ? `<div><a href="${p.sourceUrl}" target="_blank" class="sp-source-link">🔗 原文链接</a></div>` : ''}
-            <div class="sp-note">${p.note}</div>
+            ${p.sourceUrl ? `<div><a href="${escapeHtml(p.sourceUrl)}" target="_blank" class="sp-source-link">🔗 原文链接</a></div>` : ''}
+            <div class="sp-note">${escapeHtml(p.note||'')}</div>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>
   </div>`;
+}
+
+function uploadSamplePairImage(fileInput) {
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const stageId = fileInput.getAttribute('data-stage-id');
+  const pairIndex = parseInt(fileInput.getAttribute('data-pair-index'), 10);
+  if (stageId == null || isNaN(pairIndex)) return;
+  const stage = DATA.stages.find(s => s.id === stageId);
+  if (!stage || !stage.samplePairs || !stage.samplePairs[pairIndex]) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    stage.samplePairs[pairIndex].imageUrl = reader.result;
+    persistToLocal();
+    const sec = document.getElementById('section-' + stageId);
+    if (sec) sec.replaceWith(renderSimpleStage(stage));
+  };
+  reader.readAsDataURL(file);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -927,73 +1063,92 @@ function renderTaxonomyViz() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  Render: S2.5 Pilot Section
+//  Render: S2.5 Pilot Section（三图：原图 | Tripo3D | Hunyuan3D-v3.1 web）
 // ═══════════════════════════════════════════════════════
 function renderS25Section(stage) {
   const sec = document.createElement('section');
   sec.className = 'stage-section';
   sec.id = 'section-' + stage.id;
+  const si = DATA && DATA.stages ? DATA.stages.findIndex(s => s.id === stage.id) : -1;
+  const path = (k) => si >= 0 ? 'stages.' + si + '.' + k : '';
 
-  const insightsHtml = (stage.keyInsights||[]).map(ins => `
+  const insightsHtml = (stage.keyInsights||[]).map((ins, ii) => `
     <div class="insight-chip">
       <span class="insight-icon">${ins.icon}</span>
-      <span class="insight-text">${ins.text}</span>
+      <span class="insight-text">${isAdmin ? editableInline(path('keyInsights.' + ii + '.text'), ins.text) : escapeHtml(ins.text)}</span>
     </div>`).join('');
 
-  const pilotFramesHtml = (stage.pilotModels||[]).map(m => {
-    const hasImage = m.imageUrl && m.imageUrl.trim();
-    const hasModel = m.modelUrl && m.modelUrl.trim();
-    const isSketchfab = hasModel && m.modelUrl.includes('sketchfab.com');
-    const imageContent = hasImage
-      ? `<img src="${m.imageUrl}" alt="${m.imageTitle||'图'+m.order}" loading="lazy">`
-      : `<span class="sp-img-icon hide-admin" style="font-size:28px">🖼️</span>
-         <span class="pilot-slot-label hide-admin">原图待上传</span>`;
-    const modelContent = isSketchfab
-      ? `<iframe src="${m.modelUrl.replace('/models/','/models/').replace(/\/?$/,'/embed')}" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true"></iframe>`
-      : hasModel
-        ? `<a href="${m.modelUrl}" target="_blank" class="pilot-slot-link">🔗 查看3D模型</a>`
-        : `<span class="sp-img-icon hide-admin" style="font-size:24px">📦</span>
-           <span class="pilot-slot-label hide-admin">3D模型链接待填写</span>`;
+  const isGlbUrl = (url) => (url || '').trim().match(/^data:(application\/octet-stream|model\/gltf-binary|model\/gltf\+json)/);
+  window._glbCache = window._glbCache || {};
+  const slot = (url, label, field, m, mi) => {
+    const u = (url || '').trim();
+    const isDataUrl = u.startsWith('data:');
+    const isModel = field !== 'imageUrlOriginal' && (m && (m.imageKindTripo3d === 'model' || m.imageKindHunyuanWeb === 'model') || isGlbUrl(u));
+    var glbBlock = '';
+    if (isModel && u) {
+      var glbId = 'glb-' + stage.id + '-' + mi + '-' + field;
+      window._glbCache[glbId] = u;
+      glbBlock = '<div class="pilot-glb-preview" data-glb-id="' + escapeHtml(glbId) + '" style="width:100%;min-height:140px;height:140px;background:#1a1a1a;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;">加载 3D…</div>';
+    }
+    const imgOrGlb = isModel && u ? glbBlock
+      : (u ? `<img src="${u.replace(/"/g, '&quot;')}" alt="${escapeHtml(label)}" loading="lazy" style="max-width:100%;max-height:140px;object-fit:contain;">` : `<span class="sp-img-icon" style="font-size:24px">🖼️</span><span class="pilot-slot-label">${escapeHtml(label)}待上传</span>`);
+    const acceptAttr = field === 'imageUrlOriginal' ? 'image/*' : 'image/*,.glb,.gltf';
+    if (!isAdmin) return `<div class="pilot-slot"><div class="pilot-slot-label" style="font-size:11px;margin-bottom:4px">${escapeHtml(label)}</div>${imgOrGlb}</div>`;
+    return `<div class="pilot-slot">
+      <div class="pilot-slot-label" style="font-size:11px;margin-bottom:4px">${escapeHtml(label)}</div>
+      ${imgOrGlb}
+      <input type="url" class="pilot-edit-field" placeholder="URL 或下方上传" value="${isDataUrl ? '' : escapeHtml(u)}" data-pilot-id="${stage.id}" data-pilot-field="${field}" onchange="updatePilotFieldFromInput(this)" style="margin-top:6px;width:100%;font-size:11px">
+      <input type="file" accept="${acceptAttr}" style="margin-top:4px;font-size:11px" onchange="uploadPilotImage(this,'${stage.id}','${field}')">
+    </div>`;
+  };
 
+  const pilotFramesHtml = (stage.pilotModels||[]).map((m, mi) => {
+    const orig = (m.imageUrlOriginal || m.imageUrl || '').trim();
+    const tripo = (m.imageUrlTripo3d || '').trim();
+    const hunyuan = (m.imageUrlHunyuanWeb || '').trim();
+    const pid = m.id;
+    const setPath = (f) => path('pilotModels.' + mi + '.' + f);
     return `
-    <div class="pilot-frame" id="pf-${m.id}">
+    <div class="pilot-frame" id="pf-${pid}" data-pilot-index="${mi}">
       <div class="pilot-frame-header">
         <span class="pilot-frame-num"># ${m.order}</span>
-        <span class="pilot-frame-title">${m.imageTitle || '（待填写标题）'}</span>
+        ${isAdmin
+          ? `<input type="text" class="editable-field" style="border:none;background:transparent;font-weight:600;flex:1;font-size:14px" value="${escapeHtml(m.imageTitle||'')}" data-edit-path="${setPath('imageTitle')}" placeholder="标题">`
+          : `<span class="pilot-frame-title">${escapeHtml(m.imageTitle || '测试图 ' + m.order)}</span>`}
       </div>
-      <div class="pilot-body">
-        <input class="pilot-edit-field" type="text" placeholder="图片标题…"
-               value="${m.imageTitle||''}"
-               onchange="updatePilotField('${stage.id}','${m.id}','imageTitle',this.value)">
-        <div class="pilot-slot">${imageContent}
-          <input class="pilot-edit-field" type="url" placeholder="原图 URL（可选）…"
-                 value="${m.imageUrl||''}"
-                 onchange="updatePilotField('${stage.id}','${m.id}','imageUrl',this.value)">
-        </div>
-        <div class="pilot-slot">${modelContent}
-          <input class="pilot-edit-field" type="url" placeholder="3D模型链接（Sketchfab等）…"
-                 value="${m.modelUrl||''}"
-                 onchange="updatePilotField('${stage.id}','${m.id}','modelUrl',this.value)">
-        </div>
-        <div class="pilot-insight ${m.insight?'':'empty'}" id="pi-text-${m.id}">
-          ${m.insight || '发现/洞察待填写…'}
-        </div>
-        <textarea class="pilot-edit-field" rows="2" placeholder="记录此图的发现或洞察…"
-                  onchange="updatePilotField('${stage.id}','${m.id}','insight',this.value)">${m.insight||''}</textarea>
-        <button class="pilot-save-btn" onclick="savePilotAndRefresh('${stage.id}')">💾 保存更新</button>
+      <div class="pilot-body pilot-three-slots">
+        ${slot(orig, '原图', 'imageUrlOriginal', m, mi)}
+        ${slot(tripo, 'Tripo3D', 'imageUrlTripo3d', m, mi)}
+        ${slot(hunyuan, 'Hunyuan3D-v3.1 web', 'imageUrlHunyuanWeb', m, mi)}
       </div>
+      <div style="margin-top:10px">
+        ${isAdmin
+          ? `<textarea class="pilot-edit-field editable-field" rows="2" placeholder="发现/洞察…" data-edit-path="${setPath('insight')}">${escapeHtml(m.insight||'')}</textarea>`
+          : `<div class="pilot-insight ${m.insight?'':'empty'}">${escapeHtml(m.insight || '') || '—'}</div>`}
+      </div>
+      ${isAdmin ? `<button class="pilot-save-btn" onclick="savePilotAndRefresh('${stage.id}')">💾 保存到本地并刷新</button>` : ''}
     </div>`;
   }).join('');
 
+  const workflowLi = (stage.workflowStatus||[]).map((w, wi) => {
+    const base = path('workflowStatus.' + wi);
+    return `<li style="margin-bottom:6px">
+      ${isAdmin ? editableInline(base + '.step', w.step) : escapeHtml(w.step)}
+      — ${isAdmin ? editableInline(base + '.status', w.status) : escapeHtml(w.status)}
+      ${w.note !== undefined && w.note !== '' ? ' · ' + (isAdmin ? editableInline(base + '.note', w.note) : escapeHtml(w.note)) : ''}
+    </li>`;
+  }).join('');
+
   sec.innerHTML = `
-    <div class="divider-label"><span>S2.5 · 初步3D生成试验 — 驱动 S3 实验设计的关键节点</span></div>
+    <div class="divider-label"><span>S2.5 · S3 Lite 已做测试总结（Beta Test 2026-03-04）</span></div>
     <div class="section-header">
       <div class="section-icon-wrap" style="background:${stage.color}22">
         <span style="font-size:22px">${stage.icon}</span>
       </div>
       <div class="section-title-group">
-        <div class="section-title">${stage.label}：${stage.title}
-          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:6px">${stage.titleEn}</span>
+        <div class="section-title">
+          ${stage.label}：${isAdmin ? editableInline(path('title'), stage.title) : escapeHtml(stage.title)}
+          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:6px">${isAdmin ? editableInline(path('titleEn'), stage.titleEn) : escapeHtml(stage.titleEn)}</span>
         </div>
         <div class="section-subtitle">${stage.period || ''}</div>
       </div>
@@ -1003,18 +1158,69 @@ function renderS25Section(stage) {
     </div>
     <div class="card">
       <div class="card-body">
-        <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:16px">${stage.summary}</p>
-        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">🔍 关键发现（驱动 S3 六阶段框架设计）</div>
+        <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:16px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">🔍 关键发现</div>
         <div class="s25-insights">${insightsHtml}</div>
+        ${(stage.workflowStatus||[]).length ? `
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 8px">📋 工作流完成状态</div>
+        <ul style="font-size:12.5px;color:var(--text-muted);line-height:1.8;margin:0 0 16px;padding-left:20px">
+          ${workflowLi}
+        </ul>
+        ` : ''}
         <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:16px 0 12px">
-          🖼️ 试验样本（6张）— 原图 vs 3D 生成结果对比
-          <span style="font-weight:400;font-size:11px;color:var(--text-light);text-transform:none;margin-left:8px">在管理模式下可填写链接和发现</span>
+          🖼️ 试验样本（5张）— 原图 | Tripo3D | Hunyuan3D-v3.1 web
+          ${isAdmin ? '<span style="font-weight:400;font-size:11px;color:var(--text-light);margin-left:8px">管理模式：填 URL 或选择文件上传，导出 JSON 后固定保存</span>' : ''}
         </div>
         <div class="pilot-grid">${pilotFramesHtml}</div>
         ${notesHtml(stage.notes||[], stage.id, null, '备注 Notes')}
       </div>
     </div>`;
   return sec;
+}
+
+function updatePilotFieldFromInput(input) {
+  const stageId = input.getAttribute('data-pilot-id');
+  const field = input.getAttribute('data-pilot-field');
+  const frame = input.closest && input.closest('.pilot-frame');
+  const pilotIndex = frame ? frame.getAttribute('data-pilot-index') : null;
+  if (stageId == null || field == null || pilotIndex == null) return;
+  const stage = DATA.stages.find(s => s.id === stageId);
+  if (!stage || !stage.pilotModels || !stage.pilotModels[parseInt(pilotIndex, 10)]) return;
+  stage.pilotModels[parseInt(pilotIndex, 10)][field] = (input.value || '').trim();
+  persistToLocal();
+}
+
+function uploadPilotImage(fileInput, stageId, field) {
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if (!file) return;
+  showToast('正在上传…', 8000);
+  const pilotFrame = fileInput.closest('.pilot-frame');
+  const pilotIndex = pilotFrame && pilotFrame.getAttribute('data-pilot-index');
+  if (pilotIndex == null) { showToast('上传失败：无法定位槽位'); return; }
+  const stage = DATA.stages.find(s => s.id === stageId);
+  if (!stage || !stage.pilotModels || !stage.pilotModels[parseInt(pilotIndex, 10)]) {
+    showToast('上传失败：数据未就绪');
+    return;
+  }
+  const isModel = /\.(glb|gltf)$/i.test(file.name);
+  const kindField = field === 'imageUrlTripo3d' ? 'imageKindTripo3d' : field === 'imageUrlHunyuanWeb' ? 'imageKindHunyuanWeb' : null;
+  const reader = new FileReader();
+  reader.onload = function() {
+    try {
+      const idx = parseInt(pilotIndex, 10);
+      stage.pilotModels[idx][field] = reader.result;
+      if (kindField) stage.pilotModels[idx][kindField] = isModel ? 'model' : 'image';
+      persistToLocal();
+      const sec = document.getElementById('section-' + stageId);
+      if (sec) sec.replaceWith(renderS25Section(stage));
+setTimeout(function() { if (window.initGlbPreviews) window.initGlbPreviews(); }, 280);
+    showToast(isModel ? '3D 模型已上传并保存' : '图片已上传并保存');
+    } catch (e) {
+      showToast('上传失败：' + (e.message || '未知错误'));
+    }
+  };
+  reader.onerror = function() { showToast('上传失败：无法读取文件'); };
+  reader.readAsDataURL(file);
 }
 
 // Pilot frame field update
@@ -1029,9 +1235,16 @@ function updatePilotField(stageId, modelId, field, value) {
 function savePilotAndRefresh(stageId) {
   persistToLocal();
   const stage = DATA.stages.find(s => s.id === stageId);
-  if (!stage) return;
+  if (!stage) { showToast('保存失败：未找到阶段'); return; }
   const sec = document.getElementById('section-' + stageId);
-  if (sec) sec.replaceWith(renderS25Section(stage));
+  if (!sec) { showToast('保存失败：未找到区块'); return; }
+  try {
+    sec.replaceWith(renderS25Section(stage));
+    setTimeout(function() { if (window.initGlbPreviews) window.initGlbPreviews(); }, 280);
+    showToast('已保存到本地 ✓');
+  } catch (e) {
+    showToast('保存失败：' + (e.message || '未知错误'));
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1073,18 +1286,34 @@ function mergeOverride(base, override) {
     const stage = base.stages.find(s => s.id === ov.id);
     if (!stage) return;
     if (ov.notes) stage.notes = ov.notes;
+    if (ov.pilotModels && Array.isArray(ov.pilotModels)) {
+      if (!stage.pilotModels) stage.pilotModels = [];
+      ov.pilotModels.forEach((op, i) => {
+        const existing = stage.pilotModels[i];
+        stage.pilotModels[i] = existing ? { ...existing, ...op } : { ...op };
+      });
+    }
+    if (ov.workflowStatus && stage.workflowStatus) stage.workflowStatus = ov.workflowStatus;
+    if (ov.samplePairs && Array.isArray(ov.samplePairs)) {
+      if (!stage.samplePairs) stage.samplePairs = [];
+      ov.samplePairs.forEach((op, i) => {
+        const existing = stage.samplePairs[i];
+        stage.samplePairs[i] = existing ? { ...existing, ...op } : { ...op };
+      });
+    }
     if (ov.tasks && stage.tasks) {
       ov.tasks.forEach(ot => {
         const t = stage.tasks.find(t => t.id === ot.id);
         if (t) t.status = ot.status;
       });
     }
-    if (ov.phases && stage.phases) {
+    if (ov.phases) {
+      const phases = stage.phases || (stage.id === 's3' && stage.tracks ? stage.tracks.flatMap(t => t.phases || []) : []);
       ov.phases.forEach(op => {
-        const phase = stage.phases.find(p => p.id === op.id);
+        const phase = phases.find(p => p.id === op.id);
         if (!phase) return;
         if (op.notes) phase.notes = op.notes;
-        if (op.tasks) {
+        if (op.tasks && phase.tasks) {
           op.tasks.forEach(ot => {
             const t = phase.tasks.find(t => t.id === ot.id);
             if (t) t.status = ot.status;
@@ -1103,11 +1332,24 @@ function mergeOverride(base, override) {
 // ═══════════════════════════════════════════════════════
 function render() {
   const m = DATA.meta;
-  // Header
-  document.getElementById('hdr-title').textContent = m.projectTitle;
-  document.getElementById('hdr-subtitle').textContent = m.projectSubtitle || m.projectFullName;
-  document.getElementById('hdr-researcher').textContent = m.researcher || '研究者';
-  document.getElementById('hdr-date').textContent = m.lastUpdated || '—';
+  // Header（管理模式下文可编辑，blur 时写回 DATA.meta）
+  const hdrTitle = document.getElementById('hdr-title');
+  const hdrSub = document.getElementById('hdr-subtitle');
+  const hdrRes = document.getElementById('hdr-researcher');
+  const hdrDate = document.getElementById('hdr-date');
+  hdrTitle.textContent = m.projectTitle || '';
+  hdrSub.textContent = m.projectSubtitle || m.projectFullName || '';
+  hdrRes.textContent = m.researcher || '研究者';
+  hdrDate.textContent = m.lastUpdated || '—';
+  if (isAdmin) {
+    [hdrTitle, hdrSub, hdrRes, hdrDate].forEach((el, i) => { el.contentEditable = true; el.classList.add('editable-inline'); });
+    hdrTitle.dataset.editPath = 'meta.projectTitle';
+    hdrSub.dataset.editPath = 'meta.projectSubtitle';
+    hdrRes.dataset.editPath = 'meta.researcher';
+    hdrDate.dataset.editPath = 'meta.lastUpdated';
+  } else {
+    [hdrTitle, hdrSub, hdrRes, hdrDate].forEach(el => { el.contentEditable = false; el.classList.remove('editable-inline'); el.removeAttribute('data-edit-path'); });
+  }
   document.getElementById('footer-text').textContent = m.projectTitle;
   const ghUrl = m.githubUrl || '#';
   document.getElementById('hdr-github').href = ghUrl;
@@ -1132,6 +1374,7 @@ function render() {
       main.appendChild(renderSimpleStage(stage));
     }
   });
+  setTimeout(function() { if (window.initGlbPreviews) window.initGlbPreviews(); }, 150);
 }
 
 // ─── Pipeline bar ───
@@ -1169,6 +1412,8 @@ function renderSimpleStage(stage) {
   const sec = document.createElement('section');
   sec.className = 'stage-section';
   sec.id = 'section-' + stage.id;
+  const si = DATA && DATA.stages ? DATA.stages.findIndex(s => s.id === stage.id) : -1;
+  const path = (k) => si >= 0 ? 'stages.' + si + '.' + k : '';
 
   const completedTasks = (stage.tasks || []).filter(t => t.status === 'completed').length;
   const totalTasks = (stage.tasks || []).length;
@@ -1179,8 +1424,8 @@ function renderSimpleStage(stage) {
         <span style="font-size:22px">${stage.icon}</span>
       </div>
       <div class="section-title-group">
-        <div class="section-title">${stage.label}：${stage.title}
-          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:6px">${stage.titleEn}</span>
+        <div class="section-title">${stage.label}：${isAdmin ? editableInline(path('title'), stage.title) : escapeHtml(stage.title)}
+          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:6px">${escapeHtml(stage.titleEn || '')}</span>
         </div>
         <div class="section-subtitle">${stage.period || ''}</div>
       </div>
@@ -1192,7 +1437,7 @@ function renderSimpleStage(stage) {
 
     <div class="card">
       <div class="card-body">
-        <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:18px">${stage.summary}</p>
+        <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:18px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
         
         <div class="metrics-row">
           ${(stage.keyMetrics || []).map(m => `
@@ -1231,7 +1476,7 @@ function renderSimpleStage(stage) {
         </div>
 
         ${stage.id === 's2' ? renderTaxonomyViz() : ''}
-        ${stage.samplePairs ? renderSamplePairs(stage.samplePairs) : ''}
+        ${stage.samplePairs ? renderSamplePairs(stage.samplePairs, stage.id) : ''}
         ${stage.environment ? renderEnvironment(stage.environment) : ''}
         ${notesHtml(stage.notes || [], stage.id, null)}
       </div>
@@ -1244,18 +1489,20 @@ function renderS3Section(stage) {
   const sec = document.createElement('section');
   sec.className = 'stage-section';
   sec.id = 'section-' + stage.id;
+  const si = DATA && DATA.stages ? DATA.stages.findIndex(s => s.id === stage.id) : -1;
+  const path = (k) => si >= 0 ? 'stages.' + si + '.' + k : '';
 
   sec.innerHTML = `
-    <div class="divider-label"><span>S3 · 3D 生成技术探索实验</span></div>
+    <div class="divider-label"><span>S3 · 3D 探索与数据管线（双线并行）</span></div>
     <div class="section-header">
       <div class="section-icon-wrap" style="background:${stage.color}22">
         <span style="font-size:22px">${stage.icon}</span>
       </div>
       <div class="section-title-group">
-        <div class="section-title">${stage.label}：${stage.title}
-          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:6px">${stage.titleEn}</span>
+        <div class="section-title">${stage.label}：${isAdmin ? editableInline(path('title'), stage.title) : escapeHtml(stage.title)}
+          <span style="font-size:13px;font-weight:400;color:var(--text-muted);margin-left:6px">${escapeHtml(stage.titleEn || '')}</span>
         </div>
-        <div class="section-subtitle">${stage.period || ''} · ${stage.summary.substring(0,60)}…</div>
+        <div class="section-subtitle">${stage.period || ''} · ${(stage.summary||'').substring(0,80)}…</div>
       </div>
       <div class="section-header-right">
         ${statusBadgeHtml(stage.status)}
@@ -1264,7 +1511,7 @@ function renderS3Section(stage) {
 
     <div class="card" style="margin-bottom:16px">
       <div class="card-body" style="padding-bottom:8px">
-        <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:12px">${stage.summary}</p>
+        <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:12px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
         <div class="metrics-row">
           ${(stage.keyMetrics || []).map(m => `
             <div class="metric-chip">
@@ -1278,14 +1525,25 @@ function renderS3Section(stage) {
       </div>
     </div>
 
-    <div class="phases-grid" id="phases-grid-s3">
-      ${(stage.phases || []).map(p => phaseCardHtml(p, stage.id)).join('')}
+    ${stage.tracks ? stage.tracks.map((track, ti) => {
+      const trackPath = 'stages.' + si + '.tracks.' + ti;
+      return `
+    <div class="track-block" style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${isAdmin ? editableInline(trackPath + '.name', track.name) : escapeHtml(track.name)}</div>
+      <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">${isAdmin ? editableInline(trackPath + '.summary', track.summary || '') : escapeHtml(track.summary || '')}</p>
+      <div class="phases-grid" id="phases-grid-s3-${track.id}">
+        ${(track.phases || []).map((p, pi) => phaseCardHtml({ ...p, tasks: p.tasks || [] }, stage.id, trackPath + '.phases.' + pi)).join('')}
+      </div>
     </div>`;
+    }).join('') : `
+    <div class="phases-grid" id="phases-grid-s3">
+      ${(stage.phases || []).map((p, pi) => phaseCardHtml(p, stage.id, 'stages.' + si + '.phases.' + pi)).join('')}
+    </div>`}`;
   return sec;
 }
 
 // ─── Phase card HTML ───
-function phaseCardHtml(phase, stageId) {
+function phaseCardHtml(phase, stageId, pathPrefix) {
   const completedTasks = (phase.tasks || []).filter(t => t.status === 'completed').length;
   const totalTasks = (phase.tasks || []).length;
   const colorMap = {
@@ -1293,24 +1551,25 @@ function phaseCardHtml(phase, stageId) {
   };
   const labelBg = colorMap[phase.status] + '22';
   const labelColor = colorMap[phase.status];
+  const base = pathPrefix || '';
 
   return `
   <div class="card phase-card">
     <div class="phase-card-header">
       <div class="phase-label-pill" style="background:${labelBg};color:${labelColor}">
-        ${phase.label}
+        ${base && isAdmin ? editableInline(base + '.label', phase.label) : escapeHtml(phase.label)}
       </div>
-      <div class="phase-title">${phase.icon} ${phase.title}</div>
+      <div class="phase-title">${phase.icon} ${base && isAdmin ? editableInline(base + '.title', phase.title) : escapeHtml(phase.title)}</div>
       ${statusBadgeHtml(phase.status)}
     </div>
     <div class="phase-body">
-      <p class="phase-desc">${phase.description}</p>
+      <p class="phase-desc">${base && isAdmin ? editableInline(base + '.description', phase.description || '') : escapeHtml(phase.description || '')}</p>
       <ul class="phase-tasks">
-        ${(phase.tasks || []).map(t => `
+        ${(phase.tasks || []).map((t, ti) => `
           <li class="phase-task">
             <span class="pt-icon">${taskIcon(t.status)}</span>
             <span style="flex:1;color:${t.status==='completed'?'var(--text-muted)':'var(--text)'};
-              ${t.status==='completed'?'text-decoration:line-through':''}">${t.title}</span>
+              ${t.status==='completed'?'text-decoration:line-through':''}">${base && isAdmin ? editableInline(base + '.tasks.' + ti + '.title', t.title) : escapeHtml(t.title)}</span>
             <button class="task-status-btn" onclick="cycleStatus('${stageId}','${phase.id}','${t.id}',this)">
               ${t.status}
             </button>
@@ -1344,20 +1603,24 @@ function taskItemHtml(task, stageId) {
 function notesHtml(notes, stageId, phaseId, title) {
   const targetId = phaseId || stageId;
   const label = title || '备注 Notes';
+  const count = notes.length;
+  const countStr = count > 0 ? ' (' + count + ')' : '';
   return `
   <div class="notes-section">
-    <div class="notes-title">
-      <span>${label}</span>
-      <button class="add-note-btn" onclick="openNoteModal('${stageId}','${phaseId || ''}')">
-        + 添加备注
-      </button>
-    </div>
-    <div class="notes-list" id="notes-list-${targetId}">
-      ${notes.length === 0
-        ? `<div class="empty-notes">暂无备注 — 进入管理模式可添加</div>`
-        : notes.map((n, i) => noteCardHtml(n, i, stageId, phaseId)).join('')
-      }
-    </div>
+    <details class="notes-details">
+      <summary>
+        <span>${escapeHtml(label)}${countStr}</span>
+        <button class="add-note-btn" onclick="event.preventDefault();event.stopPropagation();openNoteModal('${stageId}','${phaseId || ''}')">
+          + 添加备注
+        </button>
+      </summary>
+      <div class="notes-list" id="notes-list-${targetId}" style="margin-top:10px">
+        ${notes.length === 0
+          ? `<div class="empty-notes">暂无备注 — 进入管理模式可添加</div>`
+          : notes.map((n, i) => noteCardHtml(n, i, stageId, phaseId)).join('')
+        }
+      </div>
+    </details>
   </div>`;
 }
 
@@ -1427,6 +1690,7 @@ function enterAdminMode() {
   document.getElementById('fab-label').textContent = '退出管理';
   document.getElementById('export-btn').style.display = 'inline-flex';
   document.getElementById('export-banner').classList.add('visible');
+  render();
 }
 
 function exitAdminMode() {
@@ -1437,17 +1701,27 @@ function exitAdminMode() {
   document.getElementById('fab-label').textContent = '管理模式';
   document.getElementById('export-btn').style.display = 'none';
   document.getElementById('export-banner').classList.remove('visible');
+  render();
 }
 
 // ═══════════════════════════════════════════════════════
 //  Notes
 // ═══════════════════════════════════════════════════════
+function getS3Phases(stage) {
+  if (!stage) return [];
+  if (stage.tracks) return stage.tracks.flatMap(t => t.phases || []);
+  return stage.phases || [];
+}
+function getS3Phase(stage, phaseId) {
+  return getS3Phases(stage).find(p => p.id === phaseId) || null;
+}
+
 function openNoteModal(stageId, phaseId) {
   pendingNoteTarget = { stageId, phaseId: phaseId || null };
   const stage = DATA.stages.find(s => s.id === stageId);
   let target = stage ? stage.title : stageId;
-  if (phaseId) {
-    const phase = (stage && stage.phases) ? stage.phases.find(p => p.id === phaseId) : null;
+  if (phaseId && stage) {
+    const phase = stage.id === 's3' ? getS3Phase(stage, phaseId) : (stage.phases ? stage.phases.find(p => p.id === phaseId) : null);
     if (phase) target += ' → ' + phase.title;
   }
   document.getElementById('note-modal-target').textContent = '目标：' + target;
@@ -1474,11 +1748,10 @@ function saveNote() {
   if (!stage) return;
 
   if (phaseId) {
-    const phase = stage.phases ? stage.phases.find(p => p.id === phaseId) : null;
+    const phase = stage.id === 's3' ? getS3Phase(stage, phaseId) : (stage.phases ? stage.phases.find(p => p.id === phaseId) : null);
     if (phase) {
       if (!phase.notes) phase.notes = [];
       phase.notes.push(note);
-      // Re-render that phase card
       refreshPhasesGrid(stage);
     }
   } else {
@@ -1497,7 +1770,7 @@ function deleteNote(stageId, phaseId, index) {
   const stage = DATA.stages.find(s => s.id === stageId);
   if (!stage) return;
   if (phaseId) {
-    const phase = stage.phases ? stage.phases.find(p => p.id === phaseId) : null;
+    const phase = stage.id === 's3' ? getS3Phase(stage, phaseId) : (stage.phases ? stage.phases.find(p => p.id === phaseId) : null);
     if (phase && phase.notes) {
       phase.notes.splice(index, 1);
       refreshPhasesGrid(stage);
@@ -1525,11 +1798,19 @@ function refreshStageNotes(stage) {
 }
 
 function refreshPhasesGrid(stage) {
-  const grid = document.getElementById('phases-grid-s3');
-  if (grid) {
-    grid.innerHTML = (stage.phases || []).map(p => phaseCardHtml(p, stage.id)).join('');
+  const si = DATA && DATA.stages ? DATA.stages.findIndex(s => s.id === stage.id) : -1;
+  if (stage.id === 's3' && stage.tracks) {
+    stage.tracks.forEach((track, ti) => {
+      const grid = document.getElementById('phases-grid-s3-' + track.id);
+      if (grid) {
+        const trackPath = 'stages.' + si + '.tracks.' + ti;
+        grid.innerHTML = (track.phases || []).map((p, pi) => phaseCardHtml({ ...p, tasks: p.tasks || [] }, stage.id, trackPath + '.phases.' + pi)).join('');
+      }
+    });
+  } else {
+    const grid = document.getElementById('phases-grid-s3');
+    if (grid) grid.innerHTML = (stage.phases || []).map((p, pi) => phaseCardHtml(p, stage.id, si >= 0 ? 'stages.' + si + '.phases.' + pi : '')).join('');
   }
-  // Also re-render stage notes area
   refreshStageNotes(stage);
 }
 
@@ -1583,11 +1864,41 @@ function recalcS3Progress() {
 //  Persistence & Export
 // ═══════════════════════════════════════════════════════
 function persistToLocal() {
-  // Save current data to localStorage
-  localStorage.setItem(LS_KEY, JSON.stringify(DATA));
-  // Update lastUpdated
   DATA.meta.lastUpdated = new Date().toISOString().split('T')[0];
-  document.getElementById('hdr-date').textContent = DATA.meta.lastUpdated;
+  var hdr = document.getElementById('hdr-date');
+  if (hdr) hdr.textContent = DATA.meta.lastUpdated;
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(DATA));
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.code === 22 || (e.message && e.message.indexOf('quota') !== -1)) {
+      var slim = makeSlimCopyForStorage(DATA);
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(slim));
+        showToast('本地存储已满，已省略图片/3D 以保存其他内容。请点击「导出 JSON」保存完整数据到文件。', 6000);
+      } catch (e2) {
+        showToast('本地存储已满。请点击「导出 JSON」保存到文件，避免数据丢失。', 6000);
+      }
+    } else {
+      throw e;
+    }
+  }
+}
+
+function makeSlimCopyForStorage(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(makeSlimCopyForStorage);
+  var copy = {};
+  var maxLen = 50000;
+  for (var k in obj) {
+    if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+    var v = obj[k];
+    if ((k === 'imageUrlOriginal' || k === 'imageUrlTripo3d' || k === 'imageUrlHunyuanWeb' || k === 'imageUrl') && typeof v === 'string' && v.length > maxLen) {
+      copy[k] = '';
+    } else {
+      copy[k] = makeSlimCopyForStorage(v);
+    }
+  }
+  return copy;
 }
 
 function exportData() {
@@ -1628,7 +1939,7 @@ function getEmbeddedData() {
     "projectSubtitle": "中国传统插花多模态数据集研究管线",
     "researcher": "ZHANG Rui",
     "institution": "",
-    "lastUpdated": "2026-03-03",
+    "lastUpdated": "2026-03-04",
     "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
     "editPassword": "ctfad2026",
     "projectStatus": "active"
@@ -1645,7 +1956,7 @@ function getEmbeddedData() {
       "title": "数据提取",
       "titleEn": "Data Extraction",
       "status": "in-progress",
-      "progress": 75,
+      "progress": 10,
       "period": "2026-01 ～",
       "icon": "📄",
       "color": "#10b981",
@@ -1776,7 +2087,8 @@ function getEmbeddedData() {
           "classLabel": "arrangement → arrangement_photo",
           "caption": "圖3-14 線形花的主要技法示範",
           "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
-          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取"
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "data:image/jpeg;base64,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"
         },
         {
           "source": "web",
@@ -1787,7 +2099,8 @@ function getEmbeddedData() {
           "caption": "居高臨下",
           "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
           "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
-          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成"
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "data:image/jpeg;base64,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"
         }
       ],
       "outputs": [
@@ -1930,79 +2243,101 @@ function getEmbeddedData() {
     {
       "id": "s2_5",
       "label": "S2.5",
-      "title": "初步3D生成试验",
-      "titleEn": "Pilot 3D Generation Tests",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
       "status": "completed",
       "progress": 100,
       "period": "2026-02 ～ 2026-03",
       "icon": "🔬",
       "color": "#f59e0b",
-      "summary": "在决策启动系统性 S3 实验之前，手工选取6张典型插花图片，使用现有 Image→3D 生成工具进行快速验证测试。测试结果揭示了插花3D重建的核心挑战，成为设计 S3 六阶段实验框架的直接依据。",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
       "keyInsights": [
         {
-          "icon": "🌿",
-          "text": "复杂枝干与多层遮挡结构：单视角输入下几何重建质量差，枝干穿插关系难以还原"
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
         },
         {
-          "icon": "💧",
-          "text": "花材透明/半透明纹理（如花瓣）：导致3D模型表面出现异常孔洞或噪点"
-        },
-        {
-          "icon": "🏺",
-          "text": "花器（陶盘/竹篮等）形状相对简单：3D重建效果优于整体插花，提示分解路径（Phase 5）可能有价值"
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
         },
         {
           "icon": "📐",
-          "text": "背景干净的图片（白底）3D效果显著优于有复杂背景的图片：背景去除是关键预处理步骤"
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
         }
       ],
       "pilotModels": [
         {
           "id": "pm1",
           "order": 1,
-          "imageTitle": "",
-          "imageUrl": "",
-          "modelUrl": "",
-          "insight": ""
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
         },
         {
           "id": "pm2",
           "order": 2,
-          "imageTitle": "",
-          "imageUrl": "",
-          "modelUrl": "",
-          "insight": ""
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
         },
         {
           "id": "pm3",
           "order": 3,
-          "imageTitle": "",
-          "imageUrl": "",
-          "modelUrl": "",
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
           "insight": ""
         },
         {
           "id": "pm4",
           "order": 4,
-          "imageTitle": "",
-          "imageUrl": "",
-          "modelUrl": "",
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
           "insight": ""
         },
         {
           "id": "pm5",
           "order": 5,
-          "imageTitle": "",
-          "imageUrl": "",
-          "modelUrl": "",
-          "insight": ""
-        },
-        {
-          "id": "pm6",
-          "order": 6,
-          "imageTitle": "",
-          "imageUrl": "",
-          "modelUrl": "",
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
           "insight": ""
         }
       ],
@@ -2011,270 +2346,139 @@ function getEmbeddedData() {
     {
       "id": "s3",
       "label": "S3",
-      "title": "3D 生成技术探索",
-      "titleEn": "3D Generation Research",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
       "status": "in-progress",
-      "progress": 3,
+      "progress": 25,
       "period": "2026-03 ～",
       "icon": "🎲",
       "color": "#8b5cf6",
-      "summary": "系统评估 Image→3D 生成技术在中国传统插花领域的可行性。构建 Golden Test Set 作为评估基准，沿多条技术路径探索，形成可行性评估报告。",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
       "environment": {
-        "summary": "实验工具链（逐步构建）",
+        "summary": "实验与数据工具链",
         "tools": [
           {
             "name": "conda env: ctfad-s3-exp",
             "type": "env",
-            "desc": "专用实验环境（待创建）"
+            "desc": "S3-Lite 实验环境"
           },
           {
-            "name": "rembg",
-            "type": "lib",
-            "desc": "背景去除（已安装，S3-P0使用）"
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
           },
           {
-            "name": "qwen-vl-max / claude-sonnet / gemini-flash",
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
             "type": "model",
-            "desc": "VLM理解力评估（Phase 1）"
+            "desc": "D3-3 VLM 预标注"
           },
           {
-            "name": "FLUX / SDXL",
+            "name": "MinerU + Label Studio",
             "type": "tool",
-            "desc": "2D图像生成增强（Phase 2）"
-          },
-          {
-            "name": "TripoSG / CRM / One-2-3-45",
-            "type": "tool",
-            "desc": "SDF-based 3D生成（Phase 3）"
-          },
-          {
-            "name": "InstantSplat / GaussianObject",
-            "type": "tool",
-            "desc": "3DGS-based 3D生成（Phase 3）"
-          },
-          {
-            "name": "SAM2",
-            "type": "tool",
-            "desc": "实例分割（Phase 5，部件分解路径）"
+            "desc": "D3-1 增量提取"
           }
         ]
       },
       "keyMetrics": [
         {
-          "label": "规划阶段",
-          "value": "7 个 Phase"
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
         },
         {
-          "label": "当前进度",
-          "value": "刚启动"
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
         },
         {
-          "label": "目标产出",
-          "value": "可行性报告"
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
         }
       ],
-      "phases": [
+      "tracks": [
         {
-          "id": "s3-p0",
-          "label": "P0",
-          "title": "Golden Test Set 构建",
-          "icon": "🎯",
-          "status": "in-progress",
-          "description": "从 arrangement 子集精选高质量图片，构建评估基准集（20~30张），标注复杂度/难度维度。",
-          "tasks": [
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
             {
-              "id": "s3-p0-t1",
-              "title": "筛选候选图（约50张）",
-              "status": "pending"
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
             },
             {
-              "id": "s3-p0-t2",
-              "title": "图像质量评估（s3_assess_image_quality.py）",
-              "status": "pending"
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
             },
             {
-              "id": "s3-p0-t3",
-              "title": "背景去除效果测试（rembg）",
-              "status": "pending"
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
             },
             {
-              "id": "s3-p0-t4",
-              "title": "人工标注（类型/复杂度/预期3D难度）",
-              "status": "pending"
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
             },
             {
-              "id": "s3-p0-t5",
-              "title": "最终 Golden Test Set 确定（20~30张）",
-              "status": "pending"
+              "id": "lite-e",
+              "label": "Lite-E",
+              "title": "路径组合与结论",
+              "icon": "📊",
+              "status": "pending",
+              "description": "基于 A–D 结果组合最佳方案，确定论文方向与下一步投入。"
             }
-          ],
-          "notes": []
+          ]
         },
         {
-          "id": "s3-p1",
-          "label": "P1",
-          "title": "Phase 1：VLM 理解力评估",
-          "icon": "🧠",
-          "status": "pending",
-          "description": "评估 VLM 对中国传统插花的文本和视觉理解能力，确定最优描述模型。",
-          "tasks": [
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
             {
-              "id": "s3-p1-t1",
-              "title": "文→文：领域知识描述能力测试",
-              "status": "pending"
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
             },
             {
-              "id": "s3-p1-t2",
-              "title": "图→文：多模型图像描述质量对比",
-              "status": "pending"
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
             },
             {
-              "id": "s3-p1-t3",
-              "title": "测试模型：qwen-vl-max / claude / gemini",
-              "status": "pending"
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
             }
-          ],
-          "notes": []
-        },
-        {
-          "id": "s3-p2",
-          "label": "P2",
-          "title": "Phase 2：2D 生成增强",
-          "icon": "🎨",
-          "status": "pending",
-          "description": "探索文→图、图→图生成，为3D提供更高质量的输入图像。",
-          "tasks": [
-            {
-              "id": "s3-p2-t1",
-              "title": "文→图：基于VLM描述生成增强视图",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p2-t2",
-              "title": "图→图：背景去除+光照增强+分辨率提升",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p2-t3",
-              "title": "多视图合成尝试（Zero123++）",
-              "status": "pending"
-            }
-          ],
-          "notes": []
-        },
-        {
-          "id": "s3-p3",
-          "label": "P3",
-          "title": "Phase 3：3D 基线测试",
-          "icon": "📦",
-          "status": "pending",
-          "description": "在 Golden Test Set 上评估主流 Image→3D 工具的基线性能。",
-          "tasks": [
-            {
-              "id": "s3-p3-t1",
-              "title": "SDF-based 方法（TripoSG / CRM）",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p3-t2",
-              "title": "3DGS-based 方法（InstantSplat）",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p3-t3",
-              "title": "视觉质量主观评估（1~5分）",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p3-t4",
-              "title": "定量指标：LPIPS / SSIM / PSNR",
-              "status": "pending"
-            }
-          ],
-          "notes": []
-        },
-        {
-          "id": "s3-p4",
-          "label": "P4",
-          "title": "Phase 4：增强路径探索",
-          "icon": "🚀",
-          "status": "pending",
-          "description": "在基线之上尝试多种增强策略，改善3D生成质量。",
-          "tasks": [
-            {
-              "id": "s3-p4-t1",
-              "title": "增强输入图→3D（rembg去背后输入）",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p4-t2",
-              "title": "多视图→3D 路径",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p4-t3",
-              "title": "Domain-specific LoRA / Fine-tuning",
-              "status": "pending"
-            }
-          ],
-          "notes": []
-        },
-        {
-          "id": "s3-p5",
-          "label": "P5",
-          "title": "Phase 5：部件分解路径",
-          "icon": "🔧",
-          "status": "pending",
-          "description": "将插花分解为花器+枝干+花卉，分别生成3D后组合（源自 S2.5 关键发现）。",
-          "tasks": [
-            {
-              "id": "s3-p5-t1",
-              "title": "SAM2 实例分割（花器/枝干/花卉）",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p5-t2",
-              "title": "分部件 3D 生成",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p5-t3",
-              "title": "3D 场景组合与对齐",
-              "status": "pending"
-            }
-          ],
-          "notes": []
-        },
-        {
-          "id": "s3-p6",
-          "label": "P6",
-          "title": "Phase 6：深度分析与总结",
-          "icon": "📊",
-          "status": "pending",
-          "description": "系统整理各方法表现，形成可行性评估报告。",
-          "tasks": [
-            {
-              "id": "s3-p6-t1",
-              "title": "失败模式分类分析",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p6-t2",
-              "title": "各方法横向对比表",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p6-t3",
-              "title": "可行性评估报告撰写",
-              "status": "pending"
-            },
-            {
-              "id": "s3-p6-t4",
-              "title": "S3 → S4 交接备忘录",
-              "status": "pending"
-            }
-          ],
-          "notes": []
+          ]
         }
       ],
       "notes": []
@@ -2288,6 +2492,48 @@ function getEmbeddedData() {
 //  Start
 // ═══════════════════════════════════════════════════════
 boot();
+</script>
+<script type="module">
+  import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+  import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+  window.initGlbPreviews = function() {
+    document.querySelectorAll('.pilot-glb-preview').forEach(div => {
+      if (div._glbLoaded) return;
+      const id = div.getAttribute('data-glb-id');
+      const src = id && window._glbCache && window._glbCache[id];
+      if (!src) return;
+      div._glbLoaded = true;
+      div.innerHTML = '';
+      const w = Math.max(div.clientWidth || 200, 160);
+      const h = Math.max(div.clientHeight || 140, 120);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a1a1a);
+      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 100);
+      camera.position.set(0, 0, 2);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      div.appendChild(renderer.domElement);
+      const loader = new GLTFLoader();
+      loader.load(src, function(gltf) {
+        scene.add(gltf.scene);
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z, 0.01);
+        camera.position.copy(center);
+        camera.position.z = center.z + Math.max(maxDim * 2, 1.5);
+        camera.lookAt(center);
+        function animate() {
+          requestAnimationFrame(animate);
+          renderer.render(scene, camera);
+        }
+        animate();
+      }, undefined, function(err) {
+        div.innerHTML = '<span style="color:#94a3b8;font-size:11px;padding:8px">GLB 加载失败</span>';
+      });
+    });
+  };
 </script>
 </body>
 </html>
