@@ -166,6 +166,21 @@
       border-top: 1px solid var(--border);
     }
 
+    /* ───────────────────── Stage Toggle ───────────────────── */
+    .stage-toggle { margin-top: 8px; }
+    .stage-toggle summary {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text-muted);
+      padding: 6px 0; cursor: pointer; list-style: none;
+      display: flex; align-items: center; gap: 6px;
+      user-select: none;
+    }
+    .stage-toggle summary::-webkit-details-marker { display: none; }
+    .stage-toggle summary::before {
+      content: '▶'; font-size: 10px; color: var(--text-muted); transition: transform .2s;
+    }
+    .stage-toggle[open] summary::before { transform: rotate(90deg); }
+
     /* Metrics row */
     .metrics-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
     .metric-chip {
@@ -828,6 +843,14 @@ function setNested(obj, path, value) {
   const last = parts[parts.length - 1];
   cur[!isNaN(parseInt(last, 10)) ? parseInt(last, 10) : last] = value;
 }
+const SAMPLE_BASE = 'https://raw.githubusercontent.com/rzhang4ai/ctfad-multimodal/main/dashboard/sample-data/';
+function resolveAssetUrl(p) {
+  if (!p) return '';
+  const u = (p || '').trim();
+  if (!u) return '';
+  if (/^https?:\/\//.test(u) || u.startsWith('data:')) return u;
+  return SAMPLE_BASE + u.replace(/^\/+/, '');
+}
 function editableInline(path, value) {
   if (value == null) value = '';
   if (!isAdmin) return escapeHtml(value);
@@ -915,11 +938,12 @@ function renderSamplePairs(pairs, stageId) {
     <div class="sample-pairs-title">📋 数据示例 — 图文对结构</div>
     <div class="sample-pairs-grid">
       ${pairs.map((p, i) => {
-        const imgBlock = p.imageUrl
-          ? `<img src="${(p.imageUrl||'').replace(/"/g,'&quot;')}" alt="${escapeHtml(p.imageDesc)}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">`
+        const finalUrl = resolveAssetUrl(p.imageUrl);
+        const imgBlock = finalUrl
+          ? `<img src="${finalUrl.replace(/"/g,'&quot;')}" alt="${escapeHtml(p.imageDesc)}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;">`
           : `<span class="sp-img-icon">${p.source==='book'?'📚':'🌐'}</span><span>${escapeHtml(p.imageDesc)}</span>`;
         const uploadBlock = isAdmin && si >= 0 ? `
-            <input type="url" class="pilot-edit-field editable-field" placeholder="图片 URL" value="${(p.imageUrl&&!p.imageUrl.startsWith('data:')) ? escapeHtml(p.imageUrl) : ''}" data-edit-path="stages.${si}.samplePairs.${i}.imageUrl" style="margin-top:6px;width:100%;font-size:11px">
+            <input type="url" class="pilot-edit-field editable-field" placeholder="图片 URL 或 sample-data 路径" value="${(p.imageUrl&&!p.imageUrl.startsWith('data:')) ? escapeHtml(p.imageUrl) : ''}" data-edit-path="stages.${si}.samplePairs.${i}.imageUrl" style="margin-top:6px;width:100%;font-size:11px">
             <input type="file" accept="image/*" style="margin-top:4px;font-size:11px" data-stage-id="${stageId}" data-pair-index="${i}" onchange="uploadSamplePairImage(this)">
           ` : '';
         return `
@@ -1081,17 +1105,19 @@ function renderS25Section(stage) {
   const isGlbUrl = (url) => (url || '').trim().match(/^data:(application\/octet-stream|model\/gltf-binary|model\/gltf\+json)/);
   window._glbCache = window._glbCache || {};
   const slot = (url, label, field, m, mi) => {
-    const u = (url || '').trim();
+    const raw = (url || '').trim();
+    const u = raw;
     const isDataUrl = u.startsWith('data:');
     const isModel = field !== 'imageUrlOriginal' && (m && (m.imageKindTripo3d === 'model' || m.imageKindHunyuanWeb === 'model') || isGlbUrl(u));
     var glbBlock = '';
     if (isModel && u) {
       var glbId = 'glb-' + stage.id + '-' + mi + '-' + field;
-      window._glbCache[glbId] = u;
+      window._glbCache[glbId] = resolveAssetUrl(u);
       glbBlock = '<div class="pilot-glb-preview" data-glb-id="' + escapeHtml(glbId) + '" style="width:100%;min-height:140px;height:140px;background:#1a1a1a;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;">加载 3D…</div>';
     }
+    const finalUrl = isModel ? '' : resolveAssetUrl(u);
     const imgOrGlb = isModel && u ? glbBlock
-      : (u ? `<img src="${u.replace(/"/g, '&quot;')}" alt="${escapeHtml(label)}" loading="lazy" style="max-width:100%;max-height:140px;object-fit:contain;">` : `<span class="sp-img-icon" style="font-size:24px">🖼️</span><span class="pilot-slot-label">${escapeHtml(label)}待上传</span>`);
+      : (finalUrl ? `<img src="${finalUrl.replace(/"/g, '&quot;')}" alt="${escapeHtml(label)}" loading="lazy" style="max-width:100%;max-height:140px;object-fit:contain;">` : `<span class="sp-img-icon" style="font-size:24px">🖼️</span><span class="pilot-slot-label">${escapeHtml(label)}待上传</span>`);
     const acceptAttr = field === 'imageUrlOriginal' ? 'image/*' : 'image/*,.glb,.gltf';
     if (!isAdmin) return `<div class="pilot-slot"><div class="pilot-slot-label" style="font-size:11px;margin-bottom:4px">${escapeHtml(label)}</div>${imgOrGlb}</div>`;
     return `<div class="pilot-slot">
@@ -1156,8 +1182,11 @@ function renderS25Section(stage) {
         ${statusBadgeHtml(stage.status)}
       </div>
     </div>
-    <div class="card">
-      <div class="card-body">
+
+    <details class="stage-toggle" open>
+      <summary>展开 / 收起阶段详情</summary>
+      <div class="card">
+        <div class="card-body">
         <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:16px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
         <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">🔍 关键发现</div>
         <div class="s25-insights">${insightsHtml}</div>
@@ -1173,8 +1202,9 @@ function renderS25Section(stage) {
         </div>
         <div class="pilot-grid">${pilotFramesHtml}</div>
         ${notesHtml(stage.notes||[], stage.id, null, '备注 Notes')}
+        </div>
       </div>
-    </div>`;
+    </details>`;
   return sec;
 }
 
@@ -1435,8 +1465,10 @@ function renderSimpleStage(stage) {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-body">
+    <details class="stage-toggle" open>
+      <summary>展开 / 收起阶段详情</summary>
+      <div class="card">
+        <div class="card-body">
         <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:18px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
         
         <div class="metrics-row">
@@ -1479,8 +1511,9 @@ function renderSimpleStage(stage) {
         ${stage.samplePairs ? renderSamplePairs(stage.samplePairs, stage.id) : ''}
         ${stage.environment ? renderEnvironment(stage.environment) : ''}
         ${notesHtml(stage.notes || [], stage.id, null)}
+        </div>
       </div>
-    </div>`;
+    </details>`;
   return sec;
 }
 
@@ -1509,8 +1542,11 @@ function renderS3Section(stage) {
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-body" style="padding-bottom:8px">
+    <details class="stage-toggle" open>
+      <summary>展开 / 收起阶段详情</summary>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-body" style="padding-bottom:8px">
         <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:12px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
         <div class="metrics-row">
           ${(stage.keyMetrics || []).map(m => `
@@ -1522,10 +1558,10 @@ function renderS3Section(stage) {
         </div>
         ${stage.environment ? renderEnvironment(stage.environment) : ''}
         ${notesHtml(stage.notes || [], stage.id, null, 'S3 总体备注')}
+        </div>
       </div>
-    </div>
 
-    ${stage.tracks ? stage.tracks.map((track, ti) => {
+      ${stage.tracks ? stage.tracks.map((track, ti) => {
       const trackPath = 'stages.' + si + '.tracks.' + ti;
       return `
     <div class="track-block" style="margin-bottom:20px">
@@ -1536,9 +1572,11 @@ function renderS3Section(stage) {
       </div>
     </div>`;
     }).join('') : `
-    <div class="phases-grid" id="phases-grid-s3">
-      ${(stage.phases || []).map((p, pi) => phaseCardHtml(p, stage.id, 'stages.' + si + '.phases.' + pi)).join('')}
-    </div>`}`;
+      <div class="phases-grid" id="phases-grid-s3">
+        ${(stage.phases || []).map((p, pi) => phaseCardHtml(p, stage.id, 'stages.' + si + '.phases.' + pi)).join('')}
+      </div>`}
+
+    </details>`;
   return sec;
 }
 
