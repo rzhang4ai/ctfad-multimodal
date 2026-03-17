@@ -248,6 +248,11 @@
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 16px;
     }
+    .phases-grid-four {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
     .phase-card { display: flex; flex-direction: column; }
     .phase-card-header {
       padding: 14px 16px; display: flex; align-items: center; gap: 10px;
@@ -407,7 +412,7 @@
       .pipeline-track { flex-direction: column; gap: 8px; }
       .pipeline-stage::after { display: none; }
       .stage-pill { margin-right: 0; }
-      .phases-grid { grid-template-columns: 1fr; }
+      .phases-grid, .phases-grid-four { grid-template-columns: 1fr; }
       .main-content { padding: 16px; }
     }
 
@@ -1183,7 +1188,7 @@ function renderS25Section(stage) {
       </div>
     </div>
 
-    <details class="stage-toggle" open>
+    <details class="stage-toggle">
       <summary>展开 / 收起阶段详情</summary>
       <div class="card">
         <div class="card-body">
@@ -1465,7 +1470,7 @@ function renderSimpleStage(stage) {
       </div>
     </div>
 
-    <details class="stage-toggle" open>
+    <details class="stage-toggle">
       <summary>展开 / 收起阶段详情</summary>
       <div class="card">
         <div class="card-body">
@@ -1548,14 +1553,6 @@ function renderS3Section(stage) {
       <div class="card" style="margin-bottom:16px">
         <div class="card-body" style="padding-bottom:8px">
         <p style="font-size:13.5px;color:var(--text-muted);line-height:1.7;margin-bottom:12px">${isAdmin ? editableInline(path('summary'), stage.summary) : escapeHtml(stage.summary)}</p>
-        <div class="metrics-row">
-          ${(stage.keyMetrics || []).map(m => `
-            <div class="metric-chip">
-              <div class="metric-value" style="color:${stage.color}">${m.value}</div>
-              <div class="metric-label">${m.label}</div>
-              ${m.note ? `<div class="metric-note">${m.note}</div>` : ''}
-            </div>`).join('')}
-        </div>
         ${stage.environment ? renderEnvironment(stage.environment) : ''}
         ${notesHtml(stage.notes || [], stage.id, null, 'S3 总体备注')}
         </div>
@@ -1563,12 +1560,15 @@ function renderS3Section(stage) {
 
       ${stage.tracks ? stage.tracks.map((track, ti) => {
       const trackPath = 'stages.' + si + '.tracks.' + ti;
+      const isS3Lite = track.id === 's3-lite';
+      const phasesToShow = isS3Lite ? (track.phases || []).filter(p => p.id !== 'lite-e') : (track.phases || []);
+      const gridClass = isS3Lite ? 'phases-grid-four' : 'phases-grid';
       return `
     <div class="track-block" style="margin-bottom:20px">
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${isAdmin ? editableInline(trackPath + '.name', track.name) : escapeHtml(track.name)}</div>
       <p style="font-size:12.5px;color:var(--text-muted);line-height:1.6;margin-bottom:12px">${isAdmin ? editableInline(trackPath + '.summary', track.summary || '') : escapeHtml(track.summary || '')}</p>
-      <div class="phases-grid" id="phases-grid-s3-${track.id}">
-        ${(track.phases || []).map((p, pi) => phaseCardHtml({ ...p, tasks: p.tasks || [] }, stage.id, trackPath + '.phases.' + pi)).join('')}
+      <div class="${gridClass}" id="phases-grid-s3-${track.id}">
+        ${phasesToShow.map((p, pi) => phaseCardHtml({ ...p, tasks: p.tasks || [] }, stage.id, trackPath + '.phases.' + (track.phases || []).indexOf(p))).join('')}
       </div>
     </div>`;
     }).join('') : `
@@ -1637,29 +1637,9 @@ function taskItemHtml(task, stageId) {
   </li>`;
 }
 
-// ─── Notes HTML ───
+// ─── Notes HTML（已禁用：不再展示备注块） ───
 function notesHtml(notes, stageId, phaseId, title) {
-  const targetId = phaseId || stageId;
-  const label = title || '备注 Notes';
-  const count = notes.length;
-  const countStr = count > 0 ? ' (' + count + ')' : '';
-  return `
-  <div class="notes-section">
-    <details class="notes-details">
-      <summary>
-        <span>${escapeHtml(label)}${countStr}</span>
-        <button class="add-note-btn" onclick="event.preventDefault();event.stopPropagation();openNoteModal('${stageId}','${phaseId || ''}')">
-          + 添加备注
-        </button>
-      </summary>
-      <div class="notes-list" id="notes-list-${targetId}" style="margin-top:10px">
-        ${notes.length === 0
-          ? `<div class="empty-notes">暂无备注 — 进入管理模式可添加</div>`
-          : notes.map((n, i) => noteCardHtml(n, i, stageId, phaseId)).join('')
-        }
-      </div>
-    </details>
-  </div>`;
+  return '';
 }
 
 function noteCardHtml(note, index, stageId, phaseId) {
@@ -1842,7 +1822,9 @@ function refreshPhasesGrid(stage) {
       const grid = document.getElementById('phases-grid-s3-' + track.id);
       if (grid) {
         const trackPath = 'stages.' + si + '.tracks.' + ti;
-        grid.innerHTML = (track.phases || []).map((p, pi) => phaseCardHtml({ ...p, tasks: p.tasks || [] }, stage.id, trackPath + '.phases.' + pi)).join('');
+        const phases = track.id === 's3-lite' ? (track.phases || []).filter(p => p.id !== 'lite-e') : (track.phases || []);
+        const allPhases = track.phases || [];
+        grid.innerHTML = phases.map((p) => phaseCardHtml({ ...p, tasks: p.tasks || [] }, stage.id, trackPath + '.phases.' + allPhases.indexOf(p))).join('');
       }
     });
   } else {
@@ -1967,6 +1949,1656 @@ document.addEventListener('keydown', e => {
 
 // ═══════════════════════════════════════════════════════
 //  Embedded fallback data (in case data.json can't be fetched)
+// ═══════════════════════════════════════════════════════
+function getEmbeddedData() {
+  // __EMBEDDED_DATA_BEGIN__
+  return {
+  "meta": {
+    "projectTitle": "CTFAD Pipeline Dashboard",
+    "projectFullName": "Chinese Traditional Flower Arrangement Dataset — Multimodal Pipeline",
+    "projectSubtitle": "中国传统插花多模态数据集研究管线",
+    "researcher": "ZHANG Rui",
+    "institution": "",
+    "lastUpdated": "2026-03-04",
+    "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
+    "editPassword": "ctfad2026",
+    "projectStatus": "active"
+  },
+  "overview": {
+    "description": "从书籍PDF与官方网站构建中国传统插花多模态数据集（图文对），经VLM图像分类后探索3D重建可行性。",
+    "goal": "构建高质量中国传统插花多模态数据集，评估 Image→3D 技术可行性，形成可行性报告。",
+    "currentFocus": "S3 实验启动"
+  },
+  "stages": [
+    {
+      "id": "s1",
+      "label": "S1",
+      "title": "数据提取",
+      "titleEn": "Data Extraction",
+      "status": "in-progress",
+      "progress": 10,
+      "period": "2026-01 ～",
+      "icon": "📄",
+      "color": "#10b981",
+      "summary": "双轨并行数据采集：① 书籍/论文PDF管线（MinerU → Label Studio → JSONL），已处理3本书共432条图文对；② 网络爬虫（CFAF官网 2,585条 + MET博物馆元数据图片）。数据统一归档至 datasets/web/。",
+      "environment": {
+        "summary": "双轨工具链（本地 + 网络）",
+        "tools": [
+          {
+            "name": "MinerU",
+            "type": "cli",
+            "desc": "PDF版面解析，提取图文区域"
+          },
+          {
+            "name": "Label Studio",
+            "type": "docker",
+            "desc": "人工审核标注平台，localhost:8080"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13 通用实验环境"
+          },
+          {
+            "name": "requests / BeautifulSoup4",
+            "type": "lib",
+            "desc": "CFAF 网站爬虫"
+          },
+          {
+            "name": "aiohttp",
+            "type": "lib",
+            "desc": "MET 图片异步批量下载"
+          },
+          {
+            "name": "Flask (cfaf_pair_viewer.py)",
+            "type": "tool",
+            "desc": "自研图文对标注编辑器，localhost:5001"
+          },
+          {
+            "name": "rembg",
+            "type": "lib",
+            "desc": "背景去除预装备（S3准备）"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "书籍图文对",
+          "value": "432 条",
+          "note": "3/30 本书"
+        },
+        {
+          "label": "CFAF 图文对",
+          "value": "2,585 条",
+          "note": "246篇文章，2,749张图片"
+        },
+        {
+          "label": "MET 数据",
+          "value": "元数据+图片",
+          "note": "Paintings + Ceramics"
+        },
+        {
+          "label": "CFAF标注进度",
+          "value": "进行中",
+          "note": "57条已删除，1条已编辑"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s1-t1",
+          "title": "【书籍管线】MinerU PDF 解析 + 版面分析",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t2",
+          "title": "【书籍管线】Label Studio 审核平台搭建 + 人工审核",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t3",
+          "title": "【书籍管线】图文对 JSONL 生成（book_001~003，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t4",
+          "title": "【书籍管线】剩余书籍批量处理（book_004~030）",
+          "status": "pending",
+          "note": "工作流已验证，按需扩展"
+        },
+        {
+          "id": "s1-t5",
+          "title": "【CFAF爬虫】全量采集（246篇，2,749张图）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t6",
+          "title": "【CFAF爬虫】自动图文对构建（2,585条，CLIP匹配）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t7",
+          "title": "【CFAF爬虫】人工审核标注（cfaf_pair_viewer.py，进行中）",
+          "status": "in-progress",
+          "note": "57条已删除，1条已编辑"
+        },
+        {
+          "id": "s1-t8",
+          "title": "【CFAF爬虫】VLM智能匹配（fallback类 658条）",
+          "status": "pending",
+          "note": "需 Qwen2.5-VL + One API"
+        },
+        {
+          "id": "s1-t9",
+          "title": "【MET爬虫】元数据采集 + 图片下载",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t10",
+          "title": "【CMA爬虫】克利夫兰博物馆数据采集（脚本已备，未运行）",
+          "status": "pending"
+        }
+      ],
+      "samplePairs": [
+        {
+          "source": "book",
+          "sourceLabel": "书籍 · book_003",
+          "pairId": "b003_0042",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "圖3-14 線形花的主要技法示範",
+          "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "s1_samples/sample_01.jpg"
+        },
+        {
+          "source": "web",
+          "sourceLabel": "CFAF官网 · 花藝專題",
+          "pairId": "cfaf_花藝專題_103_img_004",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "居高臨下",
+          "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
+          "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "s1_samples/sample_02.jpg"
+        }
+      ],
+      "outputs": [
+        "image_text_pairs_edited.jsonl（书籍，人工审核版）",
+        "merged_pairs.jsonl（432条合并）",
+        "cfaf_image_text_pairs.json（CFAF 2,585条原始图文对）",
+        "corrections.json（CFAF人工标注记录，进行中）",
+        "met_chinese_flowers.json + 图片目录"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "title": "图像分类",
+      "titleEn": "Image Classification",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🏷️",
+      "color": "#3b82f6",
+      "summary": "使用本地 VLM（qwen2.5vl:3b，直连Ollama）对432条书籍图文对进行两轮分类。Round 1 粗分类（6类）全量完成并人工审核；Round 2 细分类完成；arrangement 子集成功提取，作为 S3 输入。",
+      "environment": {
+        "summary": "本地 VLM 工具链（M4 16GB Mac Mini）",
+        "tools": [
+          {
+            "name": "Ollama",
+            "type": "server",
+            "desc": "本地模型服务，localhost:11434（直连，绕过One API）"
+          },
+          {
+            "name": "qwen2.5vl:3b",
+            "type": "model",
+            "desc": "主力分类模型，3.2GB，约5-8秒/张（含2.5s冷却）"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13"
+          },
+          {
+            "name": "断点续传模式",
+            "type": "pattern",
+            "desc": "每条写入即flush，中断可续跑"
+          },
+          {
+            "name": "图片预压缩",
+            "type": "pattern",
+            "desc": "max_size=768, JPEG质量85，防内存溢出"
+          },
+          {
+            "name": "M4冷却铁律",
+            "type": "pattern",
+            "desc": "每20张额外sleep(10)，防止过热降频"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "Round 1 全量完成",
+          "value": "432/432"
+        },
+        {
+          "label": "人工审核",
+          "value": "432条全量",
+          "note": "已完成"
+        },
+        {
+          "label": "Round 2 细分类",
+          "value": "已完成",
+          "note": "arrangement子类"
+        },
+        {
+          "label": "沙盒准确率",
+          "value": "75%",
+          "note": "Prompt v2（60%→75%）"
+        },
+        {
+          "label": "arrangement子集",
+          "value": "已提取",
+          "note": "→ S3输入"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s2-ta",
+          "title": "Step A：环境准备（Ollama qwen2.5vl:3b + rembg）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tb",
+          "title": "Step B：数据合并（merged_pairs.jsonl，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tc",
+          "title": "Step C：项目工程化（GitHub仓库 + 命名规范）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-td",
+          "title": "Step D：沙盒测试40张 → Prompt迭代（v1→v2，60%→75%）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te1",
+          "title": "Step E-1：全量 Round 1 运行（392条，断点续传）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te2",
+          "title": "Step E-2：合并沙盒标注 → all_predictions.jsonl（432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te3",
+          "title": "Step E-3：人工审核全量结果 → classified_final.jsonl",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tf",
+          "title": "Step F：Round 2 细分类（arrangement / diagram / vessel / plants）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tg",
+          "title": "Step G：子集提取（arrangement_photo + arrangement_drawing）",
+          "status": "completed"
+        }
+      ],
+      "outputs": [
+        "merged_pairs.jsonl（432条）",
+        "sandbox_reviewed.jsonl（40条人工标注 ⭐）",
+        "classified_final.jsonl（432条审核后）",
+        "round2_fine.jsonl（细分类结果）",
+        "subset_arrangement/（→ S3输入）"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2_5",
+      "label": "S2.5",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🔬",
+      "color": "#f59e0b",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
+      "keyInsights": [
+        {
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
+        },
+        {
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
+        },
+        {
+          "icon": "📐",
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
+        }
+      ],
+      "pilotModels": [
+        {
+          "id": "pm1",
+          "order": 1,
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "s2_5_pilots/pilot_01_original.jpg",
+          "imageUrlTripo3d": "s2_5_pilots/pilot_01_tripo3d.glb",
+          "imageUrlHunyuanWeb": "s2_5_pilots/pilot_01_hunyuan.glb",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
+        },
+        {
+          "id": "pm2",
+          "order": 2,
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "s2_5_pilots/pilot_02_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
+        },
+        {
+          "id": "pm3",
+          "order": 3,
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "s2_5_pilots/pilot_03_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm4",
+          "order": 4,
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "s2_5_pilots/pilot_04_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm5",
+          "order": 5,
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "s2_5_pilots/pilot_05_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
+      "status": "in-progress",
+      "progress": 25,
+      "period": "2026-03 ～",
+      "icon": "🎲",
+      "color": "#8b5cf6",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
+      "environment": {
+        "summary": "实验与数据工具链",
+        "tools": [
+          {
+            "name": "conda env: ctfad-s3-exp",
+            "type": "env",
+            "desc": "S3-Lite 实验环境"
+          },
+          {
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
+          },
+          {
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
+            "type": "model",
+            "desc": "D3-3 VLM 预标注"
+          },
+          {
+            "name": "MinerU + Label Studio",
+            "type": "tool",
+            "desc": "D3-1 增量提取"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
+        },
+        {
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
+        },
+        {
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
+        }
+      ],
+      "tracks": [
+        {
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
+            {
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
+            },
+            {
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
+            },
+            {
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
+            },
+            {
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
+            {
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
+            },
+            {
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
+            },
+            {
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
+            }
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+};
+  // __EMBEDDED_DATA_END__
+}
+// ═══════════════════════════════════════════════════════
+function getEmbeddedData() {
+  // __EMBEDDED_DATA_BEGIN__
+  return {
+  "meta": {
+    "projectTitle": "CTFAD Pipeline Dashboard",
+    "projectFullName": "Chinese Traditional Flower Arrangement Dataset — Multimodal Pipeline",
+    "projectSubtitle": "中国传统插花多模态数据集研究管线",
+    "researcher": "ZHANG Rui",
+    "institution": "",
+    "lastUpdated": "2026-03-04",
+    "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
+    "editPassword": "ctfad2026",
+    "projectStatus": "active"
+  },
+  "overview": {
+    "description": "从书籍PDF与官方网站构建中国传统插花多模态数据集（图文对），经VLM图像分类后探索3D重建可行性。",
+    "goal": "构建高质量中国传统插花多模态数据集，评估 Image→3D 技术可行性，形成可行性报告。",
+    "currentFocus": "S3 实验启动"
+  },
+  "stages": [
+    {
+      "id": "s1",
+      "label": "S1",
+      "title": "数据提取",
+      "titleEn": "Data Extraction",
+      "status": "in-progress",
+      "progress": 10,
+      "period": "2026-01 ～",
+      "icon": "📄",
+      "color": "#10b981",
+      "summary": "双轨并行数据采集：① 书籍/论文PDF管线（MinerU → Label Studio → JSONL），已处理3本书共432条图文对；② 网络爬虫（CFAF官网 2,585条 + MET博物馆元数据图片）。数据统一归档至 datasets/web/。",
+      "environment": {
+        "summary": "双轨工具链（本地 + 网络）",
+        "tools": [
+          {
+            "name": "MinerU",
+            "type": "cli",
+            "desc": "PDF版面解析，提取图文区域"
+          },
+          {
+            "name": "Label Studio",
+            "type": "docker",
+            "desc": "人工审核标注平台，localhost:8080"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13 通用实验环境"
+          },
+          {
+            "name": "requests / BeautifulSoup4",
+            "type": "lib",
+            "desc": "CFAF 网站爬虫"
+          },
+          {
+            "name": "aiohttp",
+            "type": "lib",
+            "desc": "MET 图片异步批量下载"
+          },
+          {
+            "name": "Flask (cfaf_pair_viewer.py)",
+            "type": "tool",
+            "desc": "自研图文对标注编辑器，localhost:5001"
+          },
+          {
+            "name": "rembg",
+            "type": "lib",
+            "desc": "背景去除预装备（S3准备）"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "书籍图文对",
+          "value": "432 条",
+          "note": "3/30 本书"
+        },
+        {
+          "label": "CFAF 图文对",
+          "value": "2,585 条",
+          "note": "246篇文章，2,749张图片"
+        },
+        {
+          "label": "MET 数据",
+          "value": "元数据+图片",
+          "note": "Paintings + Ceramics"
+        },
+        {
+          "label": "CFAF标注进度",
+          "value": "进行中",
+          "note": "57条已删除，1条已编辑"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s1-t1",
+          "title": "【书籍管线】MinerU PDF 解析 + 版面分析",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t2",
+          "title": "【书籍管线】Label Studio 审核平台搭建 + 人工审核",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t3",
+          "title": "【书籍管线】图文对 JSONL 生成（book_001~003，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t4",
+          "title": "【书籍管线】剩余书籍批量处理（book_004~030）",
+          "status": "pending",
+          "note": "工作流已验证，按需扩展"
+        },
+        {
+          "id": "s1-t5",
+          "title": "【CFAF爬虫】全量采集（246篇，2,749张图）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t6",
+          "title": "【CFAF爬虫】自动图文对构建（2,585条，CLIP匹配）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t7",
+          "title": "【CFAF爬虫】人工审核标注（cfaf_pair_viewer.py，进行中）",
+          "status": "in-progress",
+          "note": "57条已删除，1条已编辑"
+        },
+        {
+          "id": "s1-t8",
+          "title": "【CFAF爬虫】VLM智能匹配（fallback类 658条）",
+          "status": "pending",
+          "note": "需 Qwen2.5-VL + One API"
+        },
+        {
+          "id": "s1-t9",
+          "title": "【MET爬虫】元数据采集 + 图片下载",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t10",
+          "title": "【CMA爬虫】克利夫兰博物馆数据采集（脚本已备，未运行）",
+          "status": "pending"
+        }
+      ],
+      "samplePairs": [
+        {
+          "source": "book",
+          "sourceLabel": "书籍 · book_003",
+          "pairId": "b003_0042",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "圖3-14 線形花的主要技法示範",
+          "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "s1_samples/sample_01.jpg"
+        },
+        {
+          "source": "web",
+          "sourceLabel": "CFAF官网 · 花藝專題",
+          "pairId": "cfaf_花藝專題_103_img_004",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "居高臨下",
+          "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
+          "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "s1_samples/sample_02.jpg"
+        }
+      ],
+      "outputs": [
+        "image_text_pairs_edited.jsonl（书籍，人工审核版）",
+        "merged_pairs.jsonl（432条合并）",
+        "cfaf_image_text_pairs.json（CFAF 2,585条原始图文对）",
+        "corrections.json（CFAF人工标注记录，进行中）",
+        "met_chinese_flowers.json + 图片目录"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "title": "图像分类",
+      "titleEn": "Image Classification",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🏷️",
+      "color": "#3b82f6",
+      "summary": "使用本地 VLM（qwen2.5vl:3b，直连Ollama）对432条书籍图文对进行两轮分类。Round 1 粗分类（6类）全量完成并人工审核；Round 2 细分类完成；arrangement 子集成功提取，作为 S3 输入。",
+      "environment": {
+        "summary": "本地 VLM 工具链（M4 16GB Mac Mini）",
+        "tools": [
+          {
+            "name": "Ollama",
+            "type": "server",
+            "desc": "本地模型服务，localhost:11434（直连，绕过One API）"
+          },
+          {
+            "name": "qwen2.5vl:3b",
+            "type": "model",
+            "desc": "主力分类模型，3.2GB，约5-8秒/张（含2.5s冷却）"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13"
+          },
+          {
+            "name": "断点续传模式",
+            "type": "pattern",
+            "desc": "每条写入即flush，中断可续跑"
+          },
+          {
+            "name": "图片预压缩",
+            "type": "pattern",
+            "desc": "max_size=768, JPEG质量85，防内存溢出"
+          },
+          {
+            "name": "M4冷却铁律",
+            "type": "pattern",
+            "desc": "每20张额外sleep(10)，防止过热降频"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "Round 1 全量完成",
+          "value": "432/432"
+        },
+        {
+          "label": "人工审核",
+          "value": "432条全量",
+          "note": "已完成"
+        },
+        {
+          "label": "Round 2 细分类",
+          "value": "已完成",
+          "note": "arrangement子类"
+        },
+        {
+          "label": "沙盒准确率",
+          "value": "75%",
+          "note": "Prompt v2（60%→75%）"
+        },
+        {
+          "label": "arrangement子集",
+          "value": "已提取",
+          "note": "→ S3输入"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s2-ta",
+          "title": "Step A：环境准备（Ollama qwen2.5vl:3b + rembg）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tb",
+          "title": "Step B：数据合并（merged_pairs.jsonl，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tc",
+          "title": "Step C：项目工程化（GitHub仓库 + 命名规范）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-td",
+          "title": "Step D：沙盒测试40张 → Prompt迭代（v1→v2，60%→75%）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te1",
+          "title": "Step E-1：全量 Round 1 运行（392条，断点续传）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te2",
+          "title": "Step E-2：合并沙盒标注 → all_predictions.jsonl（432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te3",
+          "title": "Step E-3：人工审核全量结果 → classified_final.jsonl",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tf",
+          "title": "Step F：Round 2 细分类（arrangement / diagram / vessel / plants）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tg",
+          "title": "Step G：子集提取（arrangement_photo + arrangement_drawing）",
+          "status": "completed"
+        }
+      ],
+      "outputs": [
+        "merged_pairs.jsonl（432条）",
+        "sandbox_reviewed.jsonl（40条人工标注 ⭐）",
+        "classified_final.jsonl（432条审核后）",
+        "round2_fine.jsonl（细分类结果）",
+        "subset_arrangement/（→ S3输入）"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2_5",
+      "label": "S2.5",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🔬",
+      "color": "#f59e0b",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
+      "keyInsights": [
+        {
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
+        },
+        {
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
+        },
+        {
+          "icon": "📐",
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
+        }
+      ],
+      "pilotModels": [
+        {
+          "id": "pm1",
+          "order": 1,
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "s2_5_pilots/pilot_01_original.jpg",
+          "imageUrlTripo3d": "s2_5_pilots/pilot_01_tripo3d.glb",
+          "imageUrlHunyuanWeb": "s2_5_pilots/pilot_01_hunyuan.glb",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
+        },
+        {
+          "id": "pm2",
+          "order": 2,
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "s2_5_pilots/pilot_02_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
+        },
+        {
+          "id": "pm3",
+          "order": 3,
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "s2_5_pilots/pilot_03_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm4",
+          "order": 4,
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "s2_5_pilots/pilot_04_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm5",
+          "order": 5,
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "s2_5_pilots/pilot_05_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
+      "status": "in-progress",
+      "progress": 25,
+      "period": "2026-03 ～",
+      "icon": "🎲",
+      "color": "#8b5cf6",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
+      "environment": {
+        "summary": "实验与数据工具链",
+        "tools": [
+          {
+            "name": "conda env: ctfad-s3-exp",
+            "type": "env",
+            "desc": "S3-Lite 实验环境"
+          },
+          {
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
+          },
+          {
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
+            "type": "model",
+            "desc": "D3-3 VLM 预标注"
+          },
+          {
+            "name": "MinerU + Label Studio",
+            "type": "tool",
+            "desc": "D3-1 增量提取"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
+        },
+        {
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
+        },
+        {
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
+        }
+      ],
+      "tracks": [
+        {
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
+            {
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
+            },
+            {
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
+            },
+            {
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
+            },
+            {
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
+            {
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
+            },
+            {
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
+            },
+            {
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
+            }
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+};
+  // __EMBEDDED_DATA_END__
+}
+// ═══════════════════════════════════════════════════════
+function getEmbeddedData() {
+  // __EMBEDDED_DATA_BEGIN__
+  return {
+  "meta": {
+    "projectTitle": "CTFAD Pipeline Dashboard",
+    "projectFullName": "Chinese Traditional Flower Arrangement Dataset — Multimodal Pipeline",
+    "projectSubtitle": "中国传统插花多模态数据集研究管线",
+    "researcher": "ZHANG Rui",
+    "institution": "",
+    "lastUpdated": "2026-03-04",
+    "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
+    "editPassword": "ctfad2026",
+    "projectStatus": "active"
+  },
+  "overview": {
+    "description": "从书籍PDF与官方网站构建中国传统插花多模态数据集（图文对），经VLM图像分类后探索3D重建可行性。",
+    "goal": "构建高质量中国传统插花多模态数据集，评估 Image→3D 技术可行性，形成可行性报告。",
+    "currentFocus": "S3 实验启动"
+  },
+  "stages": [
+    {
+      "id": "s1",
+      "label": "S1",
+      "title": "数据提取",
+      "titleEn": "Data Extraction",
+      "status": "in-progress",
+      "progress": 10,
+      "period": "2026-01 ～",
+      "icon": "📄",
+      "color": "#10b981",
+      "summary": "双轨并行数据采集：① 书籍/论文PDF管线（MinerU → Label Studio → JSONL），已处理3本书共432条图文对；② 网络爬虫（CFAF官网 2,585条 + MET博物馆元数据图片）。数据统一归档至 datasets/web/。",
+      "environment": {
+        "summary": "双轨工具链（本地 + 网络）",
+        "tools": [
+          {
+            "name": "MinerU",
+            "type": "cli",
+            "desc": "PDF版面解析，提取图文区域"
+          },
+          {
+            "name": "Label Studio",
+            "type": "docker",
+            "desc": "人工审核标注平台，localhost:8080"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13 通用实验环境"
+          },
+          {
+            "name": "requests / BeautifulSoup4",
+            "type": "lib",
+            "desc": "CFAF 网站爬虫"
+          },
+          {
+            "name": "aiohttp",
+            "type": "lib",
+            "desc": "MET 图片异步批量下载"
+          },
+          {
+            "name": "Flask (cfaf_pair_viewer.py)",
+            "type": "tool",
+            "desc": "自研图文对标注编辑器，localhost:5001"
+          },
+          {
+            "name": "rembg",
+            "type": "lib",
+            "desc": "背景去除预装备（S3准备）"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "书籍图文对",
+          "value": "432 条",
+          "note": "3/30 本书"
+        },
+        {
+          "label": "CFAF 图文对",
+          "value": "2,585 条",
+          "note": "246篇文章，2,749张图片"
+        },
+        {
+          "label": "MET 数据",
+          "value": "元数据+图片",
+          "note": "Paintings + Ceramics"
+        },
+        {
+          "label": "CFAF标注进度",
+          "value": "进行中",
+          "note": "57条已删除，1条已编辑"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s1-t1",
+          "title": "【书籍管线】MinerU PDF 解析 + 版面分析",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t2",
+          "title": "【书籍管线】Label Studio 审核平台搭建 + 人工审核",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t3",
+          "title": "【书籍管线】图文对 JSONL 生成（book_001~003，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t4",
+          "title": "【书籍管线】剩余书籍批量处理（book_004~030）",
+          "status": "pending",
+          "note": "工作流已验证，按需扩展"
+        },
+        {
+          "id": "s1-t5",
+          "title": "【CFAF爬虫】全量采集（246篇，2,749张图）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t6",
+          "title": "【CFAF爬虫】自动图文对构建（2,585条，CLIP匹配）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t7",
+          "title": "【CFAF爬虫】人工审核标注（cfaf_pair_viewer.py，进行中）",
+          "status": "in-progress",
+          "note": "57条已删除，1条已编辑"
+        },
+        {
+          "id": "s1-t8",
+          "title": "【CFAF爬虫】VLM智能匹配（fallback类 658条）",
+          "status": "pending",
+          "note": "需 Qwen2.5-VL + One API"
+        },
+        {
+          "id": "s1-t9",
+          "title": "【MET爬虫】元数据采集 + 图片下载",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t10",
+          "title": "【CMA爬虫】克利夫兰博物馆数据采集（脚本已备，未运行）",
+          "status": "pending"
+        }
+      ],
+      "samplePairs": [
+        {
+          "source": "book",
+          "sourceLabel": "书籍 · book_003",
+          "pairId": "b003_0042",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "圖3-14 線形花的主要技法示範",
+          "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "s1_samples/sample_01.jpg"
+        },
+        {
+          "source": "web",
+          "sourceLabel": "CFAF官网 · 花藝專題",
+          "pairId": "cfaf_花藝專題_103_img_004",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "居高臨下",
+          "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
+          "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "s1_samples/sample_02.jpg"
+        }
+      ],
+      "outputs": [
+        "image_text_pairs_edited.jsonl（书籍，人工审核版）",
+        "merged_pairs.jsonl（432条合并）",
+        "cfaf_image_text_pairs.json（CFAF 2,585条原始图文对）",
+        "corrections.json（CFAF人工标注记录，进行中）",
+        "met_chinese_flowers.json + 图片目录"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "title": "图像分类",
+      "titleEn": "Image Classification",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🏷️",
+      "color": "#3b82f6",
+      "summary": "使用本地 VLM（qwen2.5vl:3b，直连Ollama）对432条书籍图文对进行两轮分类。Round 1 粗分类（6类）全量完成并人工审核；Round 2 细分类完成；arrangement 子集成功提取，作为 S3 输入。",
+      "environment": {
+        "summary": "本地 VLM 工具链（M4 16GB Mac Mini）",
+        "tools": [
+          {
+            "name": "Ollama",
+            "type": "server",
+            "desc": "本地模型服务，localhost:11434（直连，绕过One API）"
+          },
+          {
+            "name": "qwen2.5vl:3b",
+            "type": "model",
+            "desc": "主力分类模型，3.2GB，约5-8秒/张（含2.5s冷却）"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13"
+          },
+          {
+            "name": "断点续传模式",
+            "type": "pattern",
+            "desc": "每条写入即flush，中断可续跑"
+          },
+          {
+            "name": "图片预压缩",
+            "type": "pattern",
+            "desc": "max_size=768, JPEG质量85，防内存溢出"
+          },
+          {
+            "name": "M4冷却铁律",
+            "type": "pattern",
+            "desc": "每20张额外sleep(10)，防止过热降频"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "Round 1 全量完成",
+          "value": "432/432"
+        },
+        {
+          "label": "人工审核",
+          "value": "432条全量",
+          "note": "已完成"
+        },
+        {
+          "label": "Round 2 细分类",
+          "value": "已完成",
+          "note": "arrangement子类"
+        },
+        {
+          "label": "沙盒准确率",
+          "value": "75%",
+          "note": "Prompt v2（60%→75%）"
+        },
+        {
+          "label": "arrangement子集",
+          "value": "已提取",
+          "note": "→ S3输入"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s2-ta",
+          "title": "Step A：环境准备（Ollama qwen2.5vl:3b + rembg）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tb",
+          "title": "Step B：数据合并（merged_pairs.jsonl，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tc",
+          "title": "Step C：项目工程化（GitHub仓库 + 命名规范）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-td",
+          "title": "Step D：沙盒测试40张 → Prompt迭代（v1→v2，60%→75%）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te1",
+          "title": "Step E-1：全量 Round 1 运行（392条，断点续传）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te2",
+          "title": "Step E-2：合并沙盒标注 → all_predictions.jsonl（432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te3",
+          "title": "Step E-3：人工审核全量结果 → classified_final.jsonl",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tf",
+          "title": "Step F：Round 2 细分类（arrangement / diagram / vessel / plants）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tg",
+          "title": "Step G：子集提取（arrangement_photo + arrangement_drawing）",
+          "status": "completed"
+        }
+      ],
+      "outputs": [
+        "merged_pairs.jsonl（432条）",
+        "sandbox_reviewed.jsonl（40条人工标注 ⭐）",
+        "classified_final.jsonl（432条审核后）",
+        "round2_fine.jsonl（细分类结果）",
+        "subset_arrangement/（→ S3输入）"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2_5",
+      "label": "S2.5",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🔬",
+      "color": "#f59e0b",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
+      "keyInsights": [
+        {
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
+        },
+        {
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
+        },
+        {
+          "icon": "📐",
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
+        }
+      ],
+      "pilotModels": [
+        {
+          "id": "pm1",
+          "order": 1,
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "s2_5_pilots/pilot_01_original.jpg",
+          "imageUrlTripo3d": "s2_5_pilots/pilot_01_tripo3d.glb",
+          "imageUrlHunyuanWeb": "s2_5_pilots/pilot_01_hunyuan.glb",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
+        },
+        {
+          "id": "pm2",
+          "order": 2,
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "s2_5_pilots/pilot_02_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
+        },
+        {
+          "id": "pm3",
+          "order": 3,
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "s2_5_pilots/pilot_03_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm4",
+          "order": 4,
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "s2_5_pilots/pilot_04_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm5",
+          "order": 5,
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "s2_5_pilots/pilot_05_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
+      "status": "in-progress",
+      "progress": 25,
+      "period": "2026-03 ～",
+      "icon": "🎲",
+      "color": "#8b5cf6",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
+      "environment": {
+        "summary": "实验与数据工具链",
+        "tools": [
+          {
+            "name": "conda env: ctfad-s3-exp",
+            "type": "env",
+            "desc": "S3-Lite 实验环境"
+          },
+          {
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
+          },
+          {
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
+            "type": "model",
+            "desc": "D3-3 VLM 预标注"
+          },
+          {
+            "name": "MinerU + Label Studio",
+            "type": "tool",
+            "desc": "D3-1 增量提取"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
+        },
+        {
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
+        },
+        {
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
+        }
+      ],
+      "tracks": [
+        {
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
+            {
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
+            },
+            {
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
+            },
+            {
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
+            },
+            {
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
+            {
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
+            },
+            {
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
+            },
+            {
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
+            }
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+};
+  // __EMBEDDED_DATA_END__
+}
 // ═══════════════════════════════════════════════════════
 function getEmbeddedData() {
   // __EMBEDDED_DATA_BEGIN__
