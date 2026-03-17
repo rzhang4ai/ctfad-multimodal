@@ -3242,6 +3242,1680 @@ function getEmbeddedData() {
           "caption": "圖3-14 線形花的主要技法示範",
           "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
           "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "s1_samples/sample_01.jpg"
+        },
+        {
+          "source": "web",
+          "sourceLabel": "CFAF官网 · 花藝專題",
+          "pairId": "cfaf_花藝專題_103_img_004",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "居高臨下",
+          "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
+          "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "s1_samples/sample_02.jpg"
+        }
+      ],
+      "outputs": [
+        "image_text_pairs_edited.jsonl（书籍，人工审核版）",
+        "merged_pairs.jsonl（432条合并）",
+        "cfaf_image_text_pairs.json（CFAF 2,585条原始图文对）",
+        "corrections.json（CFAF人工标注记录，进行中）",
+        "met_chinese_flowers.json + 图片目录"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "title": "图像分类",
+      "titleEn": "Image Classification",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🏷️",
+      "color": "#3b82f6",
+      "summary": "使用本地 VLM（qwen2.5vl:3b，直连Ollama）对432条书籍图文对进行两轮分类。Round 1 粗分类（6类）全量完成并人工审核；Round 2 细分类完成；arrangement 子集成功提取，作为 S3 输入。",
+      "environment": {
+        "summary": "本地 VLM 工具链（M4 16GB Mac Mini）",
+        "tools": [
+          {
+            "name": "Ollama",
+            "type": "server",
+            "desc": "本地模型服务，localhost:11434（直连，绕过One API）"
+          },
+          {
+            "name": "qwen2.5vl:3b",
+            "type": "model",
+            "desc": "主力分类模型，3.2GB，约5-8秒/张（含2.5s冷却）"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13"
+          },
+          {
+            "name": "断点续传模式",
+            "type": "pattern",
+            "desc": "每条写入即flush，中断可续跑"
+          },
+          {
+            "name": "图片预压缩",
+            "type": "pattern",
+            "desc": "max_size=768, JPEG质量85，防内存溢出"
+          },
+          {
+            "name": "M4冷却铁律",
+            "type": "pattern",
+            "desc": "每20张额外sleep(10)，防止过热降频"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "Round 1 全量完成",
+          "value": "432/432"
+        },
+        {
+          "label": "人工审核",
+          "value": "432条全量",
+          "note": "已完成"
+        },
+        {
+          "label": "Round 2 细分类",
+          "value": "已完成",
+          "note": "arrangement子类"
+        },
+        {
+          "label": "沙盒准确率",
+          "value": "75%",
+          "note": "Prompt v2（60%→75%）"
+        },
+        {
+          "label": "arrangement子集",
+          "value": "已提取",
+          "note": "→ S3输入"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s2-ta",
+          "title": "Step A：环境准备（Ollama qwen2.5vl:3b + rembg）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tb",
+          "title": "Step B：数据合并（merged_pairs.jsonl，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tc",
+          "title": "Step C：项目工程化（GitHub仓库 + 命名规范）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-td",
+          "title": "Step D：沙盒测试40张 → Prompt迭代（v1→v2，60%→75%）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te1",
+          "title": "Step E-1：全量 Round 1 运行（392条，断点续传）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te2",
+          "title": "Step E-2：合并沙盒标注 → all_predictions.jsonl（432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te3",
+          "title": "Step E-3：人工审核全量结果 → classified_final.jsonl",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tf",
+          "title": "Step F：Round 2 细分类（arrangement / diagram / vessel / plants）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tg",
+          "title": "Step G：子集提取（arrangement_photo + arrangement_drawing）",
+          "status": "completed"
+        }
+      ],
+      "outputs": [
+        "merged_pairs.jsonl（432条）",
+        "sandbox_reviewed.jsonl（40条人工标注 ⭐）",
+        "classified_final.jsonl（432条审核后）",
+        "round2_fine.jsonl（细分类结果）",
+        "subset_arrangement/（→ S3输入）"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2_5",
+      "label": "S2.5",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🔬",
+      "color": "#f59e0b",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
+      "keyInsights": [
+        {
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
+        },
+        {
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
+        },
+        {
+          "icon": "📐",
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
+        }
+      ],
+      "pilotModels": [
+        {
+          "id": "pm1",
+          "order": 1,
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "s2_5_pilots/pilot_01_original.jpg",
+          "imageUrlTripo3d": "s2_5_pilots/pilot_01_tripo3d.glb",
+          "imageUrlHunyuanWeb": "s2_5_pilots/pilot_01_hunyuan.glb",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
+        },
+        {
+          "id": "pm2",
+          "order": 2,
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "s2_5_pilots/pilot_02_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
+        },
+        {
+          "id": "pm3",
+          "order": 3,
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "s2_5_pilots/pilot_03_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm4",
+          "order": 4,
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "s2_5_pilots/pilot_04_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm5",
+          "order": 5,
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "s2_5_pilots/pilot_05_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
+      "status": "in-progress",
+      "progress": 25,
+      "period": "2026-03 ～",
+      "icon": "🎲",
+      "color": "#8b5cf6",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
+      "environment": {
+        "summary": "实验与数据工具链",
+        "tools": [
+          {
+            "name": "conda env: ctfad-s3-exp",
+            "type": "env",
+            "desc": "S3-Lite 实验环境"
+          },
+          {
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
+          },
+          {
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
+            "type": "model",
+            "desc": "D3-3 VLM 预标注"
+          },
+          {
+            "name": "MinerU + Label Studio",
+            "type": "tool",
+            "desc": "D3-1 增量提取"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
+        },
+        {
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
+        },
+        {
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
+        }
+      ],
+      "tracks": [
+        {
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
+            {
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
+            },
+            {
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
+            },
+            {
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
+            },
+            {
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
+            },
+            {
+              "id": "lite-e",
+              "label": "Lite-E",
+              "title": "路径组合与结论",
+              "icon": "📊",
+              "status": "pending",
+              "description": "基于 A–D 结果组合最佳方案，确定论文方向与下一步投入。"
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
+            {
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
+            },
+            {
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
+            },
+            {
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
+            }
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+};
+  // __EMBEDDED_DATA_END__
+}
+// ═══════════════════════════════════════════════════════
+function getEmbeddedData() {
+  // __EMBEDDED_DATA_BEGIN__
+  return {
+  "meta": {
+    "projectTitle": "CTFAD Pipeline Dashboard",
+    "projectFullName": "Chinese Traditional Flower Arrangement Dataset — Multimodal Pipeline",
+    "projectSubtitle": "中国传统插花多模态数据集研究管线",
+    "researcher": "ZHANG Rui",
+    "institution": "",
+    "lastUpdated": "2026-03-04",
+    "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
+    "editPassword": "ctfad2026",
+    "projectStatus": "active"
+  },
+  "overview": {
+    "description": "从书籍PDF与官方网站构建中国传统插花多模态数据集（图文对），经VLM图像分类后探索3D重建可行性。",
+    "goal": "构建高质量中国传统插花多模态数据集，评估 Image→3D 技术可行性，形成可行性报告。",
+    "currentFocus": "S3 实验启动"
+  },
+  "stages": [
+    {
+      "id": "s1",
+      "label": "S1",
+      "title": "数据提取",
+      "titleEn": "Data Extraction",
+      "status": "in-progress",
+      "progress": 10,
+      "period": "2026-01 ～",
+      "icon": "📄",
+      "color": "#10b981",
+      "summary": "双轨并行数据采集：① 书籍/论文PDF管线（MinerU → Label Studio → JSONL），已处理3本书共432条图文对；② 网络爬虫（CFAF官网 2,585条 + MET博物馆元数据图片）。数据统一归档至 datasets/web/。",
+      "environment": {
+        "summary": "双轨工具链（本地 + 网络）",
+        "tools": [
+          {
+            "name": "MinerU",
+            "type": "cli",
+            "desc": "PDF版面解析，提取图文区域"
+          },
+          {
+            "name": "Label Studio",
+            "type": "docker",
+            "desc": "人工审核标注平台，localhost:8080"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13 通用实验环境"
+          },
+          {
+            "name": "requests / BeautifulSoup4",
+            "type": "lib",
+            "desc": "CFAF 网站爬虫"
+          },
+          {
+            "name": "aiohttp",
+            "type": "lib",
+            "desc": "MET 图片异步批量下载"
+          },
+          {
+            "name": "Flask (cfaf_pair_viewer.py)",
+            "type": "tool",
+            "desc": "自研图文对标注编辑器，localhost:5001"
+          },
+          {
+            "name": "rembg",
+            "type": "lib",
+            "desc": "背景去除预装备（S3准备）"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "书籍图文对",
+          "value": "432 条",
+          "note": "3/30 本书"
+        },
+        {
+          "label": "CFAF 图文对",
+          "value": "2,585 条",
+          "note": "246篇文章，2,749张图片"
+        },
+        {
+          "label": "MET 数据",
+          "value": "元数据+图片",
+          "note": "Paintings + Ceramics"
+        },
+        {
+          "label": "CFAF标注进度",
+          "value": "进行中",
+          "note": "57条已删除，1条已编辑"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s1-t1",
+          "title": "【书籍管线】MinerU PDF 解析 + 版面分析",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t2",
+          "title": "【书籍管线】Label Studio 审核平台搭建 + 人工审核",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t3",
+          "title": "【书籍管线】图文对 JSONL 生成（book_001~003，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t4",
+          "title": "【书籍管线】剩余书籍批量处理（book_004~030）",
+          "status": "pending",
+          "note": "工作流已验证，按需扩展"
+        },
+        {
+          "id": "s1-t5",
+          "title": "【CFAF爬虫】全量采集（246篇，2,749张图）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t6",
+          "title": "【CFAF爬虫】自动图文对构建（2,585条，CLIP匹配）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t7",
+          "title": "【CFAF爬虫】人工审核标注（cfaf_pair_viewer.py，进行中）",
+          "status": "in-progress",
+          "note": "57条已删除，1条已编辑"
+        },
+        {
+          "id": "s1-t8",
+          "title": "【CFAF爬虫】VLM智能匹配（fallback类 658条）",
+          "status": "pending",
+          "note": "需 Qwen2.5-VL + One API"
+        },
+        {
+          "id": "s1-t9",
+          "title": "【MET爬虫】元数据采集 + 图片下载",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t10",
+          "title": "【CMA爬虫】克利夫兰博物馆数据采集（脚本已备，未运行）",
+          "status": "pending"
+        }
+      ],
+      "samplePairs": [
+        {
+          "source": "book",
+          "sourceLabel": "书籍 · book_003",
+          "pairId": "b003_0042",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "圖3-14 線形花的主要技法示範",
+          "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "s1_samples/sample_01.jpg"
+        },
+        {
+          "source": "web",
+          "sourceLabel": "CFAF官网 · 花藝專題",
+          "pairId": "cfaf_花藝專題_103_img_004",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "居高臨下",
+          "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
+          "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "s1_samples/sample_02.jpg"
+        }
+      ],
+      "outputs": [
+        "image_text_pairs_edited.jsonl（书籍，人工审核版）",
+        "merged_pairs.jsonl（432条合并）",
+        "cfaf_image_text_pairs.json（CFAF 2,585条原始图文对）",
+        "corrections.json（CFAF人工标注记录，进行中）",
+        "met_chinese_flowers.json + 图片目录"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "title": "图像分类",
+      "titleEn": "Image Classification",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🏷️",
+      "color": "#3b82f6",
+      "summary": "使用本地 VLM（qwen2.5vl:3b，直连Ollama）对432条书籍图文对进行两轮分类。Round 1 粗分类（6类）全量完成并人工审核；Round 2 细分类完成；arrangement 子集成功提取，作为 S3 输入。",
+      "environment": {
+        "summary": "本地 VLM 工具链（M4 16GB Mac Mini）",
+        "tools": [
+          {
+            "name": "Ollama",
+            "type": "server",
+            "desc": "本地模型服务，localhost:11434（直连，绕过One API）"
+          },
+          {
+            "name": "qwen2.5vl:3b",
+            "type": "model",
+            "desc": "主力分类模型，3.2GB，约5-8秒/张（含2.5s冷却）"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13"
+          },
+          {
+            "name": "断点续传模式",
+            "type": "pattern",
+            "desc": "每条写入即flush，中断可续跑"
+          },
+          {
+            "name": "图片预压缩",
+            "type": "pattern",
+            "desc": "max_size=768, JPEG质量85，防内存溢出"
+          },
+          {
+            "name": "M4冷却铁律",
+            "type": "pattern",
+            "desc": "每20张额外sleep(10)，防止过热降频"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "Round 1 全量完成",
+          "value": "432/432"
+        },
+        {
+          "label": "人工审核",
+          "value": "432条全量",
+          "note": "已完成"
+        },
+        {
+          "label": "Round 2 细分类",
+          "value": "已完成",
+          "note": "arrangement子类"
+        },
+        {
+          "label": "沙盒准确率",
+          "value": "75%",
+          "note": "Prompt v2（60%→75%）"
+        },
+        {
+          "label": "arrangement子集",
+          "value": "已提取",
+          "note": "→ S3输入"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s2-ta",
+          "title": "Step A：环境准备（Ollama qwen2.5vl:3b + rembg）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tb",
+          "title": "Step B：数据合并（merged_pairs.jsonl，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tc",
+          "title": "Step C：项目工程化（GitHub仓库 + 命名规范）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-td",
+          "title": "Step D：沙盒测试40张 → Prompt迭代（v1→v2，60%→75%）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te1",
+          "title": "Step E-1：全量 Round 1 运行（392条，断点续传）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te2",
+          "title": "Step E-2：合并沙盒标注 → all_predictions.jsonl（432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te3",
+          "title": "Step E-3：人工审核全量结果 → classified_final.jsonl",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tf",
+          "title": "Step F：Round 2 细分类（arrangement / diagram / vessel / plants）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tg",
+          "title": "Step G：子集提取（arrangement_photo + arrangement_drawing）",
+          "status": "completed"
+        }
+      ],
+      "outputs": [
+        "merged_pairs.jsonl（432条）",
+        "sandbox_reviewed.jsonl（40条人工标注 ⭐）",
+        "classified_final.jsonl（432条审核后）",
+        "round2_fine.jsonl（细分类结果）",
+        "subset_arrangement/（→ S3输入）"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2_5",
+      "label": "S2.5",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🔬",
+      "color": "#f59e0b",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
+      "keyInsights": [
+        {
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
+        },
+        {
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
+        },
+        {
+          "icon": "📐",
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
+        }
+      ],
+      "pilotModels": [
+        {
+          "id": "pm1",
+          "order": 1,
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "s2_5_pilots/pilot_01_original.jpg",
+          "imageUrlTripo3d": "s2_5_pilots/pilot_01_tripo3d.glb",
+          "imageUrlHunyuanWeb": "s2_5_pilots/pilot_01_hunyuan.glb",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
+        },
+        {
+          "id": "pm2",
+          "order": 2,
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "s2_5_pilots/pilot_02_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
+        },
+        {
+          "id": "pm3",
+          "order": 3,
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "s2_5_pilots/pilot_03_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm4",
+          "order": 4,
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "s2_5_pilots/pilot_04_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm5",
+          "order": 5,
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "s2_5_pilots/pilot_05_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
+      "status": "in-progress",
+      "progress": 25,
+      "period": "2026-03 ～",
+      "icon": "🎲",
+      "color": "#8b5cf6",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
+      "environment": {
+        "summary": "实验与数据工具链",
+        "tools": [
+          {
+            "name": "conda env: ctfad-s3-exp",
+            "type": "env",
+            "desc": "S3-Lite 实验环境"
+          },
+          {
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
+          },
+          {
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
+            "type": "model",
+            "desc": "D3-3 VLM 预标注"
+          },
+          {
+            "name": "MinerU + Label Studio",
+            "type": "tool",
+            "desc": "D3-1 增量提取"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
+        },
+        {
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
+        },
+        {
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
+        }
+      ],
+      "tracks": [
+        {
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
+            {
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
+            },
+            {
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
+            },
+            {
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
+            },
+            {
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
+            },
+            {
+              "id": "lite-e",
+              "label": "Lite-E",
+              "title": "路径组合与结论",
+              "icon": "📊",
+              "status": "pending",
+              "description": "基于 A–D 结果组合最佳方案，确定论文方向与下一步投入。"
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
+            {
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
+            },
+            {
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
+            },
+            {
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
+            }
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+};
+  // __EMBEDDED_DATA_END__
+}
+// ═══════════════════════════════════════════════════════
+function getEmbeddedData() {
+  // __EMBEDDED_DATA_BEGIN__
+  return {
+  "meta": {
+    "projectTitle": "CTFAD Pipeline Dashboard",
+    "projectFullName": "Chinese Traditional Flower Arrangement Dataset — Multimodal Pipeline",
+    "projectSubtitle": "中国传统插花多模态数据集研究管线",
+    "researcher": "ZHANG Rui",
+    "institution": "",
+    "lastUpdated": "2026-03-04",
+    "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
+    "editPassword": "ctfad2026",
+    "projectStatus": "active"
+  },
+  "overview": {
+    "description": "从书籍PDF与官方网站构建中国传统插花多模态数据集（图文对），经VLM图像分类后探索3D重建可行性。",
+    "goal": "构建高质量中国传统插花多模态数据集，评估 Image→3D 技术可行性，形成可行性报告。",
+    "currentFocus": "S3 实验启动"
+  },
+  "stages": [
+    {
+      "id": "s1",
+      "label": "S1",
+      "title": "数据提取",
+      "titleEn": "Data Extraction",
+      "status": "in-progress",
+      "progress": 10,
+      "period": "2026-01 ～",
+      "icon": "📄",
+      "color": "#10b981",
+      "summary": "双轨并行数据采集：① 书籍/论文PDF管线（MinerU → Label Studio → JSONL），已处理3本书共432条图文对；② 网络爬虫（CFAF官网 2,585条 + MET博物馆元数据图片）。数据统一归档至 datasets/web/。",
+      "environment": {
+        "summary": "双轨工具链（本地 + 网络）",
+        "tools": [
+          {
+            "name": "MinerU",
+            "type": "cli",
+            "desc": "PDF版面解析，提取图文区域"
+          },
+          {
+            "name": "Label Studio",
+            "type": "docker",
+            "desc": "人工审核标注平台，localhost:8080"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13 通用实验环境"
+          },
+          {
+            "name": "requests / BeautifulSoup4",
+            "type": "lib",
+            "desc": "CFAF 网站爬虫"
+          },
+          {
+            "name": "aiohttp",
+            "type": "lib",
+            "desc": "MET 图片异步批量下载"
+          },
+          {
+            "name": "Flask (cfaf_pair_viewer.py)",
+            "type": "tool",
+            "desc": "自研图文对标注编辑器，localhost:5001"
+          },
+          {
+            "name": "rembg",
+            "type": "lib",
+            "desc": "背景去除预装备（S3准备）"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "书籍图文对",
+          "value": "432 条",
+          "note": "3/30 本书"
+        },
+        {
+          "label": "CFAF 图文对",
+          "value": "2,585 条",
+          "note": "246篇文章，2,749张图片"
+        },
+        {
+          "label": "MET 数据",
+          "value": "元数据+图片",
+          "note": "Paintings + Ceramics"
+        },
+        {
+          "label": "CFAF标注进度",
+          "value": "进行中",
+          "note": "57条已删除，1条已编辑"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s1-t1",
+          "title": "【书籍管线】MinerU PDF 解析 + 版面分析",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t2",
+          "title": "【书籍管线】Label Studio 审核平台搭建 + 人工审核",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t3",
+          "title": "【书籍管线】图文对 JSONL 生成（book_001~003，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t4",
+          "title": "【书籍管线】剩余书籍批量处理（book_004~030）",
+          "status": "pending",
+          "note": "工作流已验证，按需扩展"
+        },
+        {
+          "id": "s1-t5",
+          "title": "【CFAF爬虫】全量采集（246篇，2,749张图）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t6",
+          "title": "【CFAF爬虫】自动图文对构建（2,585条，CLIP匹配）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t7",
+          "title": "【CFAF爬虫】人工审核标注（cfaf_pair_viewer.py，进行中）",
+          "status": "in-progress",
+          "note": "57条已删除，1条已编辑"
+        },
+        {
+          "id": "s1-t8",
+          "title": "【CFAF爬虫】VLM智能匹配（fallback类 658条）",
+          "status": "pending",
+          "note": "需 Qwen2.5-VL + One API"
+        },
+        {
+          "id": "s1-t9",
+          "title": "【MET爬虫】元数据采集 + 图片下载",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t10",
+          "title": "【CMA爬虫】克利夫兰博物馆数据采集（脚本已备，未运行）",
+          "status": "pending"
+        }
+      ],
+      "samplePairs": [
+        {
+          "source": "book",
+          "sourceLabel": "书籍 · book_003",
+          "pairId": "b003_0042",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "圖3-14 線形花的主要技法示範",
+          "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
+          "imageUrl": "s1_samples/sample_01.jpg"
+        },
+        {
+          "source": "web",
+          "sourceLabel": "CFAF官网 · 花藝專題",
+          "pairId": "cfaf_花藝專題_103_img_004",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "居高臨下",
+          "context": "花材：倒柏、苔黃楊、海芙蓉、紅色金杖球\n花器：陶盤\n作品說明：景名取自「山高人為峰」之意，以倒柏橫斜出枝表現居高俯視的氣勢。",
+          "sourceUrl": "http://www.florist.org.tw/e01_c.asp?kk=103",
+          "note": "网页图文对：CFAF官网文章图文自动匹配，local_description 由 CLIP 语义匹配生成",
+          "imageUrl": "s1_samples/sample_02.jpg"
+        }
+      ],
+      "outputs": [
+        "image_text_pairs_edited.jsonl（书籍，人工审核版）",
+        "merged_pairs.jsonl（432条合并）",
+        "cfaf_image_text_pairs.json（CFAF 2,585条原始图文对）",
+        "corrections.json（CFAF人工标注记录，进行中）",
+        "met_chinese_flowers.json + 图片目录"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "title": "图像分类",
+      "titleEn": "Image Classification",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🏷️",
+      "color": "#3b82f6",
+      "summary": "使用本地 VLM（qwen2.5vl:3b，直连Ollama）对432条书籍图文对进行两轮分类。Round 1 粗分类（6类）全量完成并人工审核；Round 2 细分类完成；arrangement 子集成功提取，作为 S3 输入。",
+      "environment": {
+        "summary": "本地 VLM 工具链（M4 16GB Mac Mini）",
+        "tools": [
+          {
+            "name": "Ollama",
+            "type": "server",
+            "desc": "本地模型服务，localhost:11434（直连，绕过One API）"
+          },
+          {
+            "name": "qwen2.5vl:3b",
+            "type": "model",
+            "desc": "主力分类模型，3.2GB，约5-8秒/张（含2.5s冷却）"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13"
+          },
+          {
+            "name": "断点续传模式",
+            "type": "pattern",
+            "desc": "每条写入即flush，中断可续跑"
+          },
+          {
+            "name": "图片预压缩",
+            "type": "pattern",
+            "desc": "max_size=768, JPEG质量85，防内存溢出"
+          },
+          {
+            "name": "M4冷却铁律",
+            "type": "pattern",
+            "desc": "每20张额外sleep(10)，防止过热降频"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "Round 1 全量完成",
+          "value": "432/432"
+        },
+        {
+          "label": "人工审核",
+          "value": "432条全量",
+          "note": "已完成"
+        },
+        {
+          "label": "Round 2 细分类",
+          "value": "已完成",
+          "note": "arrangement子类"
+        },
+        {
+          "label": "沙盒准确率",
+          "value": "75%",
+          "note": "Prompt v2（60%→75%）"
+        },
+        {
+          "label": "arrangement子集",
+          "value": "已提取",
+          "note": "→ S3输入"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s2-ta",
+          "title": "Step A：环境准备（Ollama qwen2.5vl:3b + rembg）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tb",
+          "title": "Step B：数据合并（merged_pairs.jsonl，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tc",
+          "title": "Step C：项目工程化（GitHub仓库 + 命名规范）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-td",
+          "title": "Step D：沙盒测试40张 → Prompt迭代（v1→v2，60%→75%）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te1",
+          "title": "Step E-1：全量 Round 1 运行（392条，断点续传）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te2",
+          "title": "Step E-2：合并沙盒标注 → all_predictions.jsonl（432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-te3",
+          "title": "Step E-3：人工审核全量结果 → classified_final.jsonl",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tf",
+          "title": "Step F：Round 2 细分类（arrangement / diagram / vessel / plants）",
+          "status": "completed"
+        },
+        {
+          "id": "s2-tg",
+          "title": "Step G：子集提取（arrangement_photo + arrangement_drawing）",
+          "status": "completed"
+        }
+      ],
+      "outputs": [
+        "merged_pairs.jsonl（432条）",
+        "sandbox_reviewed.jsonl（40条人工标注 ⭐）",
+        "classified_final.jsonl（432条审核后）",
+        "round2_fine.jsonl（细分类结果）",
+        "subset_arrangement/（→ S3输入）"
+      ],
+      "notes": []
+    },
+    {
+      "id": "s2_5",
+      "label": "S2.5",
+      "title": "S3 Lite 已做测试总结",
+      "titleEn": "Beta Test Summary (2026-03-04)",
+      "status": "completed",
+      "progress": 100,
+      "period": "2026-02 ～ 2026-03",
+      "icon": "🔬",
+      "color": "#f59e0b",
+      "summary": "5 张图全流程打通：Step1 VLM（Gemini 2.5 Pro）→ Step2 去背景（rembg）→ Step3a Tripo3D / Step3b Hunyuan3D。结论：当前 SOTA 图生 3D 对插花一致失败；VLM 理解力远好于 3D（植物识别约 50–60%，产出可参考）；去背景对 3D 无显著影响。",
+      "keyInsights": [
+        {
+          "icon": "❌",
+          "text": "3D 生成对插花完全不可用：花材粘连、枝条断裂、无空间层次、物种不可识别（5/5 张一致）"
+        },
+        {
+          "icon": "✅",
+          "text": "VLM 理解力有限但可采纳：Gemini 2.5 Pro 植物识别约 50–60%，概念描述丰富但与 composition/layout 未真正关联"
+        },
+        {
+          "icon": "📐",
+          "text": "去背景对 3D 无显著影响（S2 结论在 beta 中再次验证）"
+        },
+        {
+          "icon": "🔧",
+          "text": "工作流已打通：One API、rembg、Tripo3D、断点续传 + JSONL 日志均可复用"
+        }
+      ],
+      "workflowStatus": [
+        {
+          "step": "Step 1: VLM 结构化分析",
+          "status": "完成",
+          "note": "Gemini 2.5 Pro，5 张 × 3 Prompt = 15 JSON"
+        },
+        {
+          "step": "Step 2: 去背景",
+          "status": "完成",
+          "note": "rembg birefnet-general，5 张 PNG"
+        },
+        {
+          "step": "Step 3a: Tripo3D",
+          "status": "完成",
+          "note": "5 个 GLB，质量不理想"
+        },
+        {
+          "step": "Step 3b: Hunyuan3D",
+          "status": "完成",
+          "note": "web 版 v3.1 完成；API v3.1 完成 1 张；Hunyuan3D-2.1 API 完成 1 张白模。此处展示：原图、Tripo3D 图、Hunyuan3D-v3.1 web 图。"
+        }
+      ],
+      "pilotModels": [
+        {
+          "id": "pm1",
+          "order": 1,
+          "imageTitle": "测试图 1",
+          "imageUrlOriginal": "s2_5_pilots/pilot_01_original.jpg",
+          "imageUrlTripo3d": "s2_5_pilots/pilot_01_tripo3d.glb",
+          "imageUrlHunyuanWeb": "s2_5_pilots/pilot_01_hunyuan.glb",
+          "insight": "",
+          "imageKindTripo3d": "model",
+          "imageKindHunyuanWeb": "model"
+        },
+        {
+          "id": "pm2",
+          "order": 2,
+          "imageTitle": "测试图 2",
+          "imageUrlOriginal": "s2_5_pilots/pilot_02_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": "",
+          "imageKindTripo3d": "model"
+        },
+        {
+          "id": "pm3",
+          "order": 3,
+          "imageTitle": "测试图 3",
+          "imageUrlOriginal": "s2_5_pilots/pilot_03_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm4",
+          "order": 4,
+          "imageTitle": "测试图 4",
+          "imageUrlOriginal": "s2_5_pilots/pilot_04_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        },
+        {
+          "id": "pm5",
+          "order": 5,
+          "imageTitle": "测试图 5",
+          "imageUrlOriginal": "s2_5_pilots/pilot_05_original.jpg",
+          "imageUrlTripo3d": "",
+          "imageUrlHunyuanWeb": "",
+          "insight": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "title": "3D 探索与数据管线",
+      "titleEn": "S3-Lite Experiment & D3 Data Pipeline",
+      "status": "in-progress",
+      "progress": 25,
+      "period": "2026-03 ～",
+      "icon": "🎲",
+      "color": "#8b5cf6",
+      "summary": "两线并行：① S3-Experiment-Lite（技术路径探索：增强图生成、3DGS、部件分解、参数化、组合结论）；② D3 Data Pipeline（数据集扩展、深度标注、arrangement_photo 领域分类）。详见 Obsidian 0304.S3_Experiment_Lite_Plan.md 与 0304.D3_Data_Pipeline_Plan.md。",
+      "environment": {
+        "summary": "实验与数据工具链",
+        "tools": [
+          {
+            "name": "conda env: ctfad-s3-exp",
+            "type": "env",
+            "desc": "S3-Lite 实验环境"
+          },
+          {
+            "name": "Nano Banana / Tripo3D / Luma AI",
+            "type": "tool",
+            "desc": "Lite-A/B 增强与 3D"
+          },
+          {
+            "name": "rembg / SAM / Blender",
+            "type": "tool",
+            "desc": "Lite-C/D 部件与参数化"
+          },
+          {
+            "name": "Gemini 2.5 Pro / One API",
+            "type": "model",
+            "desc": "D3-3 VLM 预标注"
+          },
+          {
+            "name": "MinerU + Label Studio",
+            "type": "tool",
+            "desc": "D3-1 增量提取"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "S3-Lite 路径",
+          "value": "5 个 Lite 实验",
+          "note": "A/B/C/D/E"
+        },
+        {
+          "label": "D3 子线",
+          "value": "3 条",
+          "note": "D3-1/2/3"
+        },
+        {
+          "label": "当前重心",
+          "value": "Lite-A/B + D3-3",
+          "note": "增强+3DGS + 领域分类"
+        }
+      ],
+      "tracks": [
+        {
+          "id": "s3-lite",
+          "name": "S3-Experiment-Lite",
+          "summary": "技术路径探索：从「找能用的模型」转为「探索有无突破口」。",
+          "phases": [
+            {
+              "id": "lite-a",
+              "label": "Lite-A",
+              "title": "增强图生成路径",
+              "icon": "🎨",
+              "status": "pending",
+              "description": "Nano Banana 2D 增强 → Tripo3D；多视角生成、花器/花材分离。"
+            },
+            {
+              "id": "lite-b",
+              "label": "Lite-B",
+              "title": "3DGS 快速可行性验证",
+              "icon": "📷",
+              "status": "pending",
+              "description": "B1 实拍多视角；B2 AI 生成多视角 → 3DGS。最可能产生突破。"
+            },
+            {
+              "id": "lite-c",
+              "label": "Lite-C",
+              "title": "部件分解试验",
+              "icon": "🔧",
+              "status": "pending",
+              "description": "SAM 分割花器/花材 → 分别 3D 生成 → Blender 组装。"
+            },
+            {
+              "id": "lite-d",
+              "label": "Lite-D",
+              "title": "参数化建模初探",
+              "icon": "📐",
+              "status": "pending",
+              "description": "Blender + 领域参数（花型/主枝角度/比例）生成骨架与布局。"
+            },
+            {
+              "id": "lite-e",
+              "label": "Lite-E",
+              "title": "路径组合与结论",
+              "icon": "📊",
+              "status": "pending",
+              "description": "基于 A–D 结果组合最佳方案，确定论文方向与下一步投入。"
+            }
+          ]
+        },
+        {
+          "id": "d3",
+          "name": "D3 Data Pipeline",
+          "summary": "与 S3-Lite 并行的数据线：扩展图文对、深度标注、arrangement_photo 领域分类。",
+          "phases": [
+            {
+              "id": "d3-1",
+              "label": "D3-1",
+              "title": "增量提取",
+              "icon": "📄",
+              "status": "pending",
+              "description": "27 本书 → 图文对扩大；arrangement_photo 从 126 增至 300+。复用 S1 八步 + S2 分类。"
+            },
+            {
+              "id": "d3-2",
+              "label": "D3-2",
+              "title": "已有数据深度标注",
+              "icon": "✏️",
+              "status": "pending",
+              "description": "432 条 caption/context 审核校准、图文对齐质量标注。P0：63 张 A 级精修。"
+            },
+            {
+              "id": "d3-3",
+              "label": "D3-3",
+              "title": "领域分类",
+              "icon": "🏷️",
+              "status": "pending",
+              "description": "arrangement_photo 126 张 → 花型/花器/花材/复杂度等 core_dimensions。VLM 预标注 + 人工审核。"
+            }
+          ]
+        }
+      ],
+      "notes": []
+    }
+  ]
+};
+  // __EMBEDDED_DATA_END__
+}
+// ═══════════════════════════════════════════════════════
+function getEmbeddedData() {
+  // __EMBEDDED_DATA_BEGIN__
+  return {
+  "meta": {
+    "projectTitle": "CTFAD Pipeline Dashboard",
+    "projectFullName": "Chinese Traditional Flower Arrangement Dataset — Multimodal Pipeline",
+    "projectSubtitle": "中国传统插花多模态数据集研究管线",
+    "researcher": "ZHANG Rui",
+    "institution": "",
+    "lastUpdated": "2026-03-04",
+    "githubUrl": "https://github.com/[your-username]/ctfad-multimodal",
+    "editPassword": "ctfad2026",
+    "projectStatus": "active"
+  },
+  "overview": {
+    "description": "从书籍PDF与官方网站构建中国传统插花多模态数据集（图文对），经VLM图像分类后探索3D重建可行性。",
+    "goal": "构建高质量中国传统插花多模态数据集，评估 Image→3D 技术可行性，形成可行性报告。",
+    "currentFocus": "S3 实验启动"
+  },
+  "stages": [
+    {
+      "id": "s1",
+      "label": "S1",
+      "title": "数据提取",
+      "titleEn": "Data Extraction",
+      "status": "in-progress",
+      "progress": 10,
+      "period": "2026-01 ～",
+      "icon": "📄",
+      "color": "#10b981",
+      "summary": "双轨并行数据采集：① 书籍/论文PDF管线（MinerU → Label Studio → JSONL），已处理3本书共432条图文对；② 网络爬虫（CFAF官网 2,585条 + MET博物馆元数据图片）。数据统一归档至 datasets/web/。",
+      "environment": {
+        "summary": "双轨工具链（本地 + 网络）",
+        "tools": [
+          {
+            "name": "MinerU",
+            "type": "cli",
+            "desc": "PDF版面解析，提取图文区域"
+          },
+          {
+            "name": "Label Studio",
+            "type": "docker",
+            "desc": "人工审核标注平台，localhost:8080"
+          },
+          {
+            "name": "conda env: ctfad-s3",
+            "type": "env",
+            "desc": "Python 3.13 通用实验环境"
+          },
+          {
+            "name": "requests / BeautifulSoup4",
+            "type": "lib",
+            "desc": "CFAF 网站爬虫"
+          },
+          {
+            "name": "aiohttp",
+            "type": "lib",
+            "desc": "MET 图片异步批量下载"
+          },
+          {
+            "name": "Flask (cfaf_pair_viewer.py)",
+            "type": "tool",
+            "desc": "自研图文对标注编辑器，localhost:5001"
+          },
+          {
+            "name": "rembg",
+            "type": "lib",
+            "desc": "背景去除预装备（S3准备）"
+          }
+        ]
+      },
+      "keyMetrics": [
+        {
+          "label": "书籍图文对",
+          "value": "432 条",
+          "note": "3/30 本书"
+        },
+        {
+          "label": "CFAF 图文对",
+          "value": "2,585 条",
+          "note": "246篇文章，2,749张图片"
+        },
+        {
+          "label": "MET 数据",
+          "value": "元数据+图片",
+          "note": "Paintings + Ceramics"
+        },
+        {
+          "label": "CFAF标注进度",
+          "value": "进行中",
+          "note": "57条已删除，1条已编辑"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "s1-t1",
+          "title": "【书籍管线】MinerU PDF 解析 + 版面分析",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t2",
+          "title": "【书籍管线】Label Studio 审核平台搭建 + 人工审核",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t3",
+          "title": "【书籍管线】图文对 JSONL 生成（book_001~003，432条）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t4",
+          "title": "【书籍管线】剩余书籍批量处理（book_004~030）",
+          "status": "pending",
+          "note": "工作流已验证，按需扩展"
+        },
+        {
+          "id": "s1-t5",
+          "title": "【CFAF爬虫】全量采集（246篇，2,749张图）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t6",
+          "title": "【CFAF爬虫】自动图文对构建（2,585条，CLIP匹配）",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t7",
+          "title": "【CFAF爬虫】人工审核标注（cfaf_pair_viewer.py，进行中）",
+          "status": "in-progress",
+          "note": "57条已删除，1条已编辑"
+        },
+        {
+          "id": "s1-t8",
+          "title": "【CFAF爬虫】VLM智能匹配（fallback类 658条）",
+          "status": "pending",
+          "note": "需 Qwen2.5-VL + One API"
+        },
+        {
+          "id": "s1-t9",
+          "title": "【MET爬虫】元数据采集 + 图片下载",
+          "status": "completed"
+        },
+        {
+          "id": "s1-t10",
+          "title": "【CMA爬虫】克利夫兰博物馆数据采集（脚本已备，未运行）",
+          "status": "pending"
+        }
+      ],
+      "samplePairs": [
+        {
+          "source": "book",
+          "sourceLabel": "书籍 · book_003",
+          "pairId": "b003_0042",
+          "imageDesc": "插花作品实拍图",
+          "classLabel": "arrangement → arrangement_photo",
+          "caption": "圖3-14 線形花的主要技法示範",
+          "context": "線形花以線條美為主，主枝的選擇以直線或弧線為主。三主枝的長度比例為7：5：3，插於劍山前後左右不同方位，形成三角形空間構圖。",
+          "note": "书籍图文对：图注（caption）+ 周边正文（context）双字段，由 MinerU 自动提取",
           "imageUrl": "data:image/jpeg;base64,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"
         },
         {
